@@ -246,6 +246,7 @@ using System;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using static AppData;
+using System.Collections;
 
 public class MechanismSceneHandler : MonoBehaviour
 {
@@ -273,6 +274,7 @@ public class MechanismSceneHandler : MonoBehaviour
 
     void Start()
     {
+        //AttachToggleListeners();
         string csvPath = Application.dataPath + "/data/sessions/sessions.csv";
         SessionDataHandler sessionHandler = new SessionDataHandler(csvPath);
         Dictionary<string, double> mechanismTimes = sessionHandler.CalculateTotalTimeForMechanisms(DateTime.Now);
@@ -298,15 +300,30 @@ public class MechanismSceneHandler : MonoBehaviour
                 else
                     Debug.LogWarning("Select at least one toggle to proceed.");
             });
-
+        DeselectAllToggles();
         // Attach listeners to the toggles to update the toggleSelected variable
-        AttachToggleListeners();
+        StartCoroutine(DelayedAttachListeners());
+
     }
-    //void OnEnable()
-    //{
-    //    AttachToggleListeners();
-    //    updateTogglesBasedOnCSV();  // Moved here to ensure toggles are ready before setup
-    //}
+
+    IEnumerator DelayedAttachListeners()
+    {
+        yield return new WaitForSeconds(1f);  // Allow UI to fully initialize
+        AttachToggleListeners();
+        Debug.Log("Listeners attached after delay.");
+    }
+
+    void DeselectAllToggles()
+    {
+        foreach (Transform child in toggleGroup.transform)
+        {
+            Toggle toggleComponent = child.GetComponent<Toggle>();
+            if (toggleComponent != null)
+            {
+                toggleComponent.isOn = false;  // Reset all toggles to off
+            }
+        }
+    }
 
     void AttachToggleListeners()
     {
