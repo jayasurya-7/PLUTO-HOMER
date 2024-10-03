@@ -1,104 +1,128 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 using static AppData;
 
 public class calibrationSceneHandler : MonoBehaviour
 {
     private string selectedMechanism;
     private bool isCalibrating = false;
+    private float togetherPosition = 0.0f;    
+    private float separationPosition = 10.0f;  
+    public TextMeshProUGUI textMessage;
+    public TextMeshProUGUI mechText;
+    private static bool connect = false;
 
-    // Define the target positions in centimeters (e.g., 0 cm for together, 9.96 cm for separation)
-    private float togetherPosition = 0.0f;
-    private float separationPosition = 9.96f;
-
-    // Start is called before the first frame update
     void Start()
     {
-        // Read the selected mechanism from MechanismSelection class
         selectedMechanism = MechanismSelection.selectedOption;
-        Debug.Log("Selected Mechanism: " + selectedMechanism);
-
-        // Check if HOC mechanism is selected to enable auto-calibration
-        if (selectedMechanism == "hoc")
-        {
-            Debug.Log("HOC mechanism selected. Ready for auto-calibration.");
-        }
+        int mechNumber = PlutoComm.GetPlutoCodeFromLabel(PlutoComm.MECHANISMS, selectedMechanism);
+        mechText.text = PlutoComm.MECHANISMSTEXT[mechNumber];
     }
 
-    // Update is called once per frame
     void Update()
     {
-        // Simulate Pluto button press using the 'C' key for testing
         if (Input.GetKeyDown(KeyCode.C) && !isCalibrating)
         {
             StartCoroutine(AutoCalibrateHOC());
         }
+
+        if (ConnectToRobot.isPLUTO && !connect)
+        {
+            PlutoComm.OnButtonReleased += onPlutoButtonReleased;
+            connect = true;
+        }
+
+        if (isCalibrating)
+        {
+            Debug.Log("Pluto button released, starting calibration");
+            StartCoroutine(AutoCalibrateHOC());
+            isCalibrating = false;
+        }
     }
 
-    // Coroutine to handle the HOC auto-calibration process
     IEnumerator AutoCalibrateHOC()
     {
-        isCalibrating = true;
-        float dist = PlutoComm.getHOCDisplay(PlutoComm.angle);
-        // Step 1: Calculate distance between handles
-        float currentDistance = dist;
-        Debug.Log("Initial Distance between handles: " + currentDistance);
+        textMessage.text = "Calibrating...";
+ 
+        float currentDistance = PlutoComm.getHOCDisplay(PlutoComm.angle);
 
-        // Step 2: Apply torque to bring handles together
         ApplyTorqueToMoveHandles(currentDistance, togetherPosition);
-        Debug.Log("Applying torque to bring handles together...");
-
-        // Wait for 1 second to allow the handles to move
         yield return new WaitForSeconds(1.0f);
 
-        // Step 3: Move handles to separation position (9.96 cm)
-        ApplyTorqueToMoveHandles(togetherPosition, separationPosition);
-        Debug.Log("Moving handles to separation position: " + separationPosition + " cm");
+        float currentDistance1 = PlutoComm.getHOCDisplay(PlutoComm.angle);
+        if (!CheckPositionTogether(currentDistance1, togetherPosition)) yield break;
 
-        // Wait for 1 second to reach the target separation
+        PlutoComm.calibrate(selectedMechanism);
+
+        ApplyTorqueToMoveHandles(currentDistance, separationPosition);
+
         yield return new WaitForSeconds(1.0f);
+        currentDistance = PlutoComm.getHOCDisplay(PlutoComm.angle);
+        if (!CheckPositionSeparation(currentDistance, separationPosition)) yield break;
 
-        // Step 4: Bring handles together again
-        ApplyTorqueToMoveHandles(separationPosition, togetherPosition);
-        Debug.Log("Bringing handles together again...");
+        ApplyTorqueToMoveHandles(currentDistance, togetherPosition);
 
-        // Wait for 1 second to complete the movement
         yield return new WaitForSeconds(1.0f);
+        currentDistance = PlutoComm.getHOCDisplay(PlutoComm.angle);
 
-        // Calibration complete
         isCalibrating = false;
-        Debug.Log("Auto-calibration complete!");
+        textMessage.text = "Calibration Done";
+        textMessage.color = Color.green;
+        PlutoComm.setControlType(PlutoComm.CONTROLTYPE[0]);
     }
 
-    // Function to calculate the current distance between the handles
-    private float CalculateDistanceBetweenHandles()
-    {
-        // Dummy implementation for calculating distance. Replace with actual logic.
-        float leftHandlePosition = 0.0f;  // Replace with actual left handle position
-        float rightHandlePosition = 10.0f;  // Replace with actual right handle position
-
-        // Calculate the distance between the handles
-        return Mathf.Abs(rightHandlePosition - leftHandlePosition);
-    }
-
-    // Function to apply torque to move the handles to the target position
     private void ApplyTorqueToMoveHandles(float currentPos, float targetPos)
     {
         float distance = targetPos - currentPos;
-
-        // Determine the direction of the torque: positive or negative
-        float torqueValue = (distance > 0) ? 10.0f : -10.0f;
-
-        // Send the torque command to the device (Placeholder: Replace with actual command)
-        SendTorqueCommandToPlutoDevice(torqueValue);
+        float torqueValue = (distance > 0) ? -0.09f : 0.09f;   // torque values Nm
+        PlutoComm.setControlType("TORQUE");
+        PlutoComm.setControlTarget(torqueValue);
     }
 
-    // Placeholder function to send torque command to Pluto device
-    private void SendTorqueCommandToPlutoDevice(float torqueValue)
+    private void onPlutoButtonReleased()
     {
-        Debug.Log("Sending torque command: " + torqueValue);
-        // Implement the actual command to control the torque on the device
-        // This might involve using your serial communication script to send torque data to the device
+        isCalibrating = true;
+    }
+
+    
+    private bool CheckPositionTogether(float currentPosition, float targetPosition)
+    {
+        if (currentPosition <= 1.5f)
+        {
+            return true;
+        }
+        else
+        {
+            textMessage.text = $"Error: Together Position NOT reached! Current: {currentPosition}";
+            textMessage.color = Color.red;
+            isCalibrating = false;
+            return false;
+        }
+    }
+
+
+    private bool CheckPositionSeparation(float currentPosition, float targetPosition)
+    {
+        if (currentPosition >= 9.0f)
+        {
+            return true;
+        }
+        else
+        {
+            textMessage.text = $"Error: Separation Position NOT reached! Current: {currentPosition}";
+            textMessage.color = Color.red;
+            isCalibrating = false;
+            return false;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (ConnectToRobot.isPLUTO)
+        {
+            PlutoComm.OnButtonReleased -= onPlutoButtonReleased;
+        }
     }
 }

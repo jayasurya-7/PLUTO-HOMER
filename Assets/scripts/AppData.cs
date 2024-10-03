@@ -79,7 +79,7 @@ public static class AppData
 
     public static class MechanismSelection
     {
-        public static string selectedOption;  // This will store the name of the selected toggle option
+        public static string selectedOption;  
     }
 
 

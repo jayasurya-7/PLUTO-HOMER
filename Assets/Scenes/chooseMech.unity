@@ -1224,7 +1224,7 @@ GameObject:
   - component: {fileID: 411680517}
   - component: {fileID: 411680524}
   m_Layer: 5
-  m_Name: fps
+  m_Name: FPS
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3732,7 +3732,7 @@ GameObject:
   - component: {fileID: 1155057210}
   - component: {fileID: 1155057211}
   m_Layer: 5
-  m_Name: wfe
+  m_Name: WFE
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4258,7 +4258,7 @@ GameObject:
   - component: {fileID: 1346650305}
   - component: {fileID: 1346650312}
   m_Layer: 5
-  m_Name: hoc
+  m_Name: HOC
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5463,7 +5463,7 @@ GameObject:
   - component: {fileID: 1707995295}
   - component: {fileID: 1707995302}
   m_Layer: 5
-  m_Name: wurd
+  m_Name: WUD
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
