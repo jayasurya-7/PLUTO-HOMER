@@ -9,7 +9,7 @@ public class calibrationSceneHandler : MonoBehaviour
     private string selectedMechanism;
     private bool isCalibrating = false;
     private float togetherPosition = 0.0f;    
-    private float separationPosition = 10.0f;  
+    private float separationPosition = 11.0f;  
     public TextMeshProUGUI textMessage;
     public TextMeshProUGUI mechText;
     private static bool connect = false;
@@ -25,7 +25,7 @@ public class calibrationSceneHandler : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.C) && !isCalibrating)
         {
-            StartCoroutine(AutoCalibrateHOC());
+         PerformCalibration();
         }
 
         if (ConnectToRobot.isPLUTO && !connect)
@@ -36,13 +36,46 @@ public class calibrationSceneHandler : MonoBehaviour
 
         if (isCalibrating)
         {
-            Debug.Log("Pluto button released, starting calibration");
-            StartCoroutine(AutoCalibrateHOC());
+            PerformCalibration();
             isCalibrating = false;
         }
     }
 
-    IEnumerator AutoCalibrateHOC()
+    private void PerformCalibration()
+    {
+        if (string.IsNullOrEmpty(selectedMechanism))
+        {
+            Debug.LogError("No mechanism selected for calibration!");
+            return;
+        }
+
+        switch (selectedMechanism)
+        {
+            case "HOC":
+                StartCoroutine(autoCalibrateHOC());
+                break;
+
+            case "WFE":
+                Debug.Log("WFE CALIBRATED");
+                //StartCoroutine(autoCalibrateWFE());
+                break;
+
+            case "WUD": 
+                //StartCoroutine(autoCalibrateWUD());
+                break;
+
+            case "FPS":
+                //StartCoroutine(autoCalibrateFPS());
+                break;
+
+            default:
+                Debug.LogError("Unknown mechanism type selected: " + selectedMechanism);
+                break;
+        }
+    }
+
+
+    IEnumerator autoCalibrateHOC()
     {
         textMessage.text = "Calibrating...";
  
