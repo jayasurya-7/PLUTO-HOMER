@@ -272,6 +272,7 @@ public class MechanismSceneHandler : MonoBehaviour
 
     void LoadNextScene()
     {
+        Debug.Log(MechanismSelection.selectedOption + " selected Option");
         SceneManager.LoadScene("calibration");
     }
 }
