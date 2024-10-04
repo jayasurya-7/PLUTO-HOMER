@@ -56,15 +56,17 @@ public class calibrationSceneHandler : MonoBehaviour
                 break;
 
             case "WFE":
-                Debug.Log("WFE CALIBRATED");
+                Debug.Log("WFE CALIBRATION");
                 //StartCoroutine(autoCalibrateWFE());
                 break;
 
-            case "WUD": 
+            case "WUD":
+                Debug.Log("WUD CALIBRATION");
                 //StartCoroutine(autoCalibrateWUD());
                 break;
 
             case "FPS":
+                Debug.Log("FPS CALIBRATION");
                 //StartCoroutine(autoCalibrateFPS());
                 break;
 
@@ -77,6 +79,7 @@ public class calibrationSceneHandler : MonoBehaviour
 
     IEnumerator autoCalibrateHOC()
     {
+        textMessage.color = Color.black;
         textMessage.text = "Calibrating...";
  
         float currentDistance = PlutoComm.getHOCDisplay(PlutoComm.angle);
@@ -102,7 +105,7 @@ public class calibrationSceneHandler : MonoBehaviour
 
         isCalibrating = false;
         textMessage.text = "Calibration Done";
-        textMessage.color = Color.green;
+        textMessage.color = new Color32(62, 214, 111, 255);
         PlutoComm.setControlType(PlutoComm.CONTROLTYPE[0]);
     }
 

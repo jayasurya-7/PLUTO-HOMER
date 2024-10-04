@@ -70,7 +70,6 @@ public class MechanismSceneHandler : MonoBehaviour
     {
         yield return new WaitForSeconds(1f);  // Allow UI to fully initialize
         AttachToggleListeners();
-        Debug.Log("Listeners attached after delay.");
     }
 
     void DeselectAllToggles()
@@ -110,7 +109,6 @@ public class MechanismSceneHandler : MonoBehaviour
             {
                 toggleSelected = true;
                 MechanismSelection.selectedOption = child.name;  // Store the selected toggle name
-                Debug.Log($"Selected option: {MechanismSelection.selectedOption}");  // Debugging line
                 break;
             }
         }
