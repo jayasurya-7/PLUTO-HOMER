@@ -1,22 +1,21 @@
-﻿
+
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using TS.DoubleSlider;
-// using Mono.Cecil.Cil;
 using UnityEngine.SceneManagement;
-
 
 public class AROMsceneHandler : MonoBehaviour
 {
     enum AssessStates
     {
         INIT,
-        MOVE_TO_EXTREME,
-        ASSESS,
-        AROM_LOCKED
+        TRIAL_RUNNING,
+        TRIAL_COMPLETE,
+        ASSESSMENT_COMPLETE
     };
-    private bool isButtonPressed = false;
+
+    // --- UI References ---
     public TMP_Text lText;
     public TMP_Text rText;
     public TMP_Text insText;
@@ -24,375 +23,807 @@ public class AROMsceneHandler : MonoBehaviour
     public TMP_Text relaxText;
     public TMP_Text feedbackText;
     public TMP_Text jointAngle;
-    public TMP_Text jointAngleHoc;
-    public TMP_Text directionArrow; // "→" or "←"
-    private int _linx, _rinx;
-    private float _tmin = 0f, _tmax = 0f;
+    public TMP_Text directionArrow;
 
     public GameObject nextButton;
     public GameObject startButton;
     public GameObject CurrPositioncursor;
-    public GameObject CurrPositioncursorHoc;
-    public UnityEngine.UI.Image aromLockedImage; // Reference to change background color
+    public UnityEngine.UI.Image aromLockedImage;
 
-    private AssessStates _state;
-
-    private float angLimit;
     public DoubleSlider aromSlider;
-    public DoubleSlider aromSliderHOC;
     public bool isSelected = false;
-
     public assessmentSceneHandler panelControl;
 
-    private bool aromConfirmed = false; // Track if AROM has been confirmed
-    private const float MIN_AROM_RANGE = 5f; // Minimum 5 degrees to require confirmation
-    private const float EXTREME_POINT_THRESHOLD = 2f; // Threshold to detect movement to extreme point
+    // --- State ---
+    private AssessStates _state;
+    private bool isButtonPressed = false;
+    private float angLimit;
+    private int _linx, _rinx;
+    private float _tmin, _tmax;
 
+    // --- Trial / Cycle structure ---
+    private const int NUM_TRIALS = 3;
+    private const int CYCLES_PER_TRIAL = 5;
+    private int _currentTrial = 0;
+    private int _completedCycles = 0;
+    private List<(float lo, float hi)>[] _trialCycles;
+    private (float lo, float hi)[] _trialBests;
+
+    // --- Velocity rolling window (10 signed samples, deg/s) ---
+    private const int VEL_WINDOW = 10;
+    private Queue<float> _velWindow = new Queue<float>(VEL_WINDOW);
+    private float _lastAngle;
+    private bool _atRest;
+
+    // === NON-HOC: Direction-based bidirectional algorithm ===
+    private int _currDirection = 0;   // +1 = toward HI, -1 = toward LO, 0 = neutral
+    private bool _wasGoingHi = false; // patient has moved toward HI this cycle
+    private bool _wasGoingLo = false; // patient has moved toward LO this cycle
+    private float _hiArmAngle;        // angle when HI direction was first detected this cycle
+    private float _loArmAngle;        // angle when LO direction was first detected this cycle
+    private const float VEL_DIR_THRESHOLD = 2f; // deg/s to classify direction
+    private float _peakHi = float.NegativeInfinity;
+    private float _peakLo = float.PositiveInfinity;
+    private bool _hiFinalized, _loFinalized;
+    private float _finalizedHi, _finalizedLo;
+
+    // === HOC: State-based opening/closing algorithm ===
+    enum HocState { OPENING, CLOSING }
+    private HocState _hocState = HocState.OPENING;
+    private float _hocPeakOpen;     // max angle reached during OPENING
+    private float _hocPeakClose;    // min angle reached during CLOSING
+    private bool _hocOpenFinalized, _hocCloseFinalized;
+    private const float HOC_REVERSAL_THRESHOLD_DEG = 0.0873f;  // ~0.5 cm at radius 6cm
+
+    // --- Algorithm constants ---
+    private const float REVERSAL_THRESHOLD = 5f;
+    private const float MIN_AROM_RANGE     = 5f;
+
+    // --- Direction text lookup ---
     private List<string[]> DirectionText = new List<string[]>
-     {
-         new string[] { "Flexion", "Extension" },
-         new string[] { "Radial Dev" ,"Ulnar Dev"},
-         new string[] { "Pronation", "Supination" },
-         new string[] { "Open", "Open"},
-         new string[] { "", "" },
-         new string[] { "", "" }
-     };
+    {
+        new string[] { "Flexion",   "Extension" },
+        new string[] { "Radial Dev","Ulnar Dev"  },
+        new string[] { "Pronation", "Supination" },
+        new string[] { "Open",      "Open"       },
+        new string[] { "",          ""           },
+        new string[] { "",          ""           }
+    };
 
+    // --- Cycle marker colors — one distinct color per cycle position (1–5) ---
+    private static readonly Color[] CycleColors = new Color[]
+    {
+        new Color(1.0f, 0.2f, 0.2f, 1f),  // cycle 1 — red
+        new Color(1.0f, 0.6f, 0.1f, 1f),  // cycle 2 — orange
+        new Color(0.9f, 0.9f, 0.0f, 1f),  // cycle 3 — yellow
+        new Color(0.2f, 0.8f, 0.3f, 1f),  // cycle 4 — green
+        new Color(0.2f, 0.5f, 1.0f, 1f),  // cycle 5 — blue
+    };
 
-     // --- REAL-TIME TRACKING ---
-    private float lastAngle = 0f;
-    private float lastDirection = 0f;
-
-    private float forwardLimit = 0f;
-    private float backwardLimit = 0f;
-
-    private int forwardReversals = 0;
-    private int backwardReversals = 0;
-
-    // Hybrid adaptive threshold parameters
-    private const float THRESHOLD_MIN = 5f;      // Minimum threshold (filters jitter)
-    private const float THRESHOLD_MAX = 15f;     // Maximum threshold (prevents false reversals)
-    private const float THRESHOLD_PERCENT = 0.15f; // 15% of range
-
-    private float directionThreshold = 2f;
-
-    // Post-confirmation validation: track if patient can reach both points after AROM is locked
-    private int postConfirmForwardReversals = 0;
-    private int postConfirmBackwardReversals = 0;
-    private float lockedMinPoint = 0f;
-    private float lockedMaxPoint = 0f;
-
-
+    // -------------------------------------------------------------------------
     void Start()
     {
-        // Initialize the assessment data.
         AppLogger.LogInfo(
             $"ROM data loaded for mechanism {AppData.Instance.selectedMechanism.name}: "
             + $"AROM [{AppData.Instance.selectedMechanism.oldRom.aromMin}, "
             + $"{AppData.Instance.selectedMechanism.oldRom.aromMax}], "
-            + $"PROM [{AppData.Instance.selectedMechanism.oldRom.promMin}, " 
-            + $"  {AppData.Instance.selectedMechanism.oldRom.promMax}]"
+            + $"PROM [{AppData.Instance.selectedMechanism.oldRom.promMin}, "
+            + $"{AppData.Instance.selectedMechanism.oldRom.promMax}]"
         );
         InitializeAssessment();
     }
 
     public void InitializeAssessment()
     {
-        // Disable control.
         PlutoComm.setControlType("NONE");
-
-        // Disable the button to move to the next assessment.
         nextButton.SetActive(false);
-        
-        // Reset AROM confirmed flag
-        aromConfirmed = false;
 
-        // Reset image color
         if (aromLockedImage != null)
             aromLockedImage.color = Color.white;
 
-        // Update the min and max values.
-        angLimit = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? PlutoComm.CALIBANGLE[PlutoComm.mechanism] + 10.0f : PlutoComm.MECHOFFSETVALUE[PlutoComm.mechanism] + 10.0f;
-        aromSlider.Setup(-angLimit, angLimit, AppData.Instance.selectedMechanism.oldRom.aromMin, AppData.Instance.selectedMechanism.oldRom.aromMax);
-        
-        // Initialize min and max to current position, not 0
+        angLimit = AppData.Instance.selectedMechanism.IsMechanism("HOC")
+            ? 93f  // HOC uses -93 to 0 range
+            : PlutoComm.MECHOFFSETVALUE[PlutoComm.mechanism] + 10.0f;
+
+        // All mechanisms use the same unified slider setup
+        float sliderMin = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? -93f : -angLimit;
+        float sliderMax = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? 0f : angLimit;
+
         float startAngle = PlutoComm.angle;
+        aromSlider.Setup(sliderMin, sliderMax, startAngle, startAngle);
+        aromSlider.UpdateMinMaxvalues = false;
+        aromSlider.HideHandles();
         aromSlider.minAng = startAngle;
         aromSlider.maxAng = startAngle;
 
-        // Update central text.
-        cText.gameObject.SetActive(AppData.Instance.selectedMechanism.IsMechanism("HOC"));
-        cText.text = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? "Closed" : "";
+        // cText label not needed with unified sliders
 
-        // Update the left and right text.
         (_rinx, _linx) = AppData.Instance.IsTrainingSide("RIGHT") ? (1, 0) : (0, 1);
         rText.text = DirectionText[PlutoComm.mechanism - 1][_rinx];
         lText.text = DirectionText[PlutoComm.mechanism - 1][_linx];
 
-        // Set the state to INIT.
-        _state = AssessStates.INIT;
+        // Allocate trial data arrays
+        _trialCycles = new List<(float, float)>[NUM_TRIALS];
+        _trialBests  = new (float, float)[NUM_TRIALS];
+        for (int i = 0; i < NUM_TRIALS; i++)
+            _trialCycles[i] = new List<(float, float)>();
 
-        // Attach callback for PLUTO button release.
+        _currentTrial    = 0;
+        _completedCycles = 0;
+        _velWindow.Clear();
+        _lastAngle = PlutoComm.angle;
+        _atRest    = false;
+
+        _state = AssessStates.INIT;
         PlutoComm.OnButtonReleased += OnPlutoButtonReleased;
 
         UpdateStatusText();
     }
 
-    private void DisablearomGameObjects()
+    void OnDestroy()
     {
-        startButton.SetActive(false);
-        nextButton.SetActive(false);
+        if (ConnectToRobot.isPLUTO)
+            PlutoComm.OnButtonReleased -= OnPlutoButtonReleased;
     }
 
-    public void OnStartButtonClick()
-    {
-        startAssessment();
-        startButton.SetActive(false);
-        nextButton.SetActive(true);
-    }
-
+    // -------------------------------------------------------------------------
     void Update()
     {
-        // jointAngle.text = ((int)PlutoComm.angle).ToString();
-        // jointAngleHoc.text = ((int)PlutoComm.getHOCDisplay(PlutoComm.angle)).ToString();
-
         if (isSelected)
         {
-            runaAssessmentStateMachine();
+            RunStateMachine();
             UpdateStatusText();
         }
         else
         {
-            if (AppData.Instance.selectedMechanism.IsMechanism("HOC"))
+            // PROM tab active — show whatever AROM result we have
+            if (_state == AssessStates.ASSESSMENT_COMPLETE)
             {
-                float currentMinCM = ConvertToCM(aromSlider.minAng);
-                float currentMaxCM = ConvertToCM(aromSlider.maxAng);
-                relaxText.text = "Assessment Completed \n"
-                                 + FormatRelaxText(AppData.Instance.selectedMechanism.oldRom.aromMin, AppData.Instance.selectedMechanism.oldRom.aromMax) 
-                                 + "Current AROM: " + currentMinCM.ToString("0.0") + "cm : " 
-                                 + currentMaxCM.ToString("0.0") + "cm (Aperture: "
-                                 + Mathf.Abs(currentMaxCM - currentMinCM).ToString("0.0") + "cm)\n";
+                string unit = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? "cm" : "°";
+                float lo = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? ConvertToCM(_tmin) : _tmin;
+                float hi = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? ConvertToCM(_tmax) : _tmax;
+                relaxText.text = "Assessment Completed\n"
+                    + FormatRelaxText(AppData.Instance.selectedMechanism.oldRom.aromMin,
+                                      AppData.Instance.selectedMechanism.oldRom.aromMax)
+                    + $"\nCurrent AROM: {lo:F1}{unit} : {hi:F1}{unit}"
+                    + $" ({Mathf.Abs(hi - lo):F1}{unit})";
             }
             else
             {
-                relaxText.text = "Assessment Completed \n"
-                                 + FormatRelaxText(AppData.Instance.selectedMechanism.oldRom.aromMin, AppData.Instance.selectedMechanism.oldRom.aromMax)
-                                 + "|| " + "Current AROM: " + (int)aromSlider.minAng + " : "
-                                 + (int)aromSlider.maxAng + " (" + (int)(aromSlider.maxAng - aromSlider.minAng) + "°)\n";
+                relaxText.text = "Assessment Completed\n"
+                    + FormatRelaxText(AppData.Instance.selectedMechanism.oldRom.aromMin,
+                                      AppData.Instance.selectedMechanism.oldRom.aromMax);
             }
         }
     }
 
-    void runaAssessmentStateMachine()
+    // =========================================================================
+    // State machine
+    // =========================================================================
+    void RunStateMachine()
     {
         CurrPositioncursor.SetActive(true);
-        CurrPositioncursorHoc.SetActive(AppData.Instance.selectedMechanism.IsMechanism("HOC"));
+        startButton.SetActive(false);
+
         switch (_state)
         {
             case AssessStates.INIT:
-                startButton.SetActive(false);
-
-                if (isButtonPressed || Input.GetKeyDown(KeyCode.Return))
-                {
-                    _state = AssessStates.MOVE_TO_EXTREME;
-                    isButtonPressed = false;
-                    AppLogger.LogInfo("Patient instructed to move to one extreme point");
-                }
-                relaxText.text = FormatRelaxText(AppData.Instance.selectedMechanism.oldRom.promMin, AppData.Instance.selectedMechanism.oldRom.promMax)
-                    + "\n\nPress PLUTO button to start";
-                break;
-
-            case AssessStates.MOVE_TO_EXTREME:
-                startButton.SetActive(false);
-
-                string extremeUnit = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? "cm" : "°";
-                float extremeAngle = PlutoComm.angle;
-                float displayExtreme = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? ConvertToCM(extremeAngle) : extremeAngle;
-
-                // Display current angle and instruction
-                relaxText.text = $"Move to one extreme point\n"
-                    + $"Current: {displayExtreme:F1}{extremeUnit}\n"
-                    + $"Then press PLUTO button";
-
                 feedbackText.text = "";
                 directionArrow.text = "";
-
-                // Detect if patient has moved from start position
+                relaxText.text = $"AROM Assessment\n{NUM_TRIALS} trials × {CYCLES_PER_TRIAL} cycles each\n\nPress PLUTO button to start Trial 1";
                 if (isButtonPressed || Input.GetKeyDown(KeyCode.Return))
                 {
-                    // Check if patient has moved at least EXTREME_POINT_THRESHOLD from start
-                    if (Mathf.Abs(extremeAngle - lastAngle) >= EXTREME_POINT_THRESHOLD || lastAngle != 0)
-                    {
-                        _state = AssessStates.ASSESS;
-                        aromSlider.minAng = extremeAngle;
-                        aromSlider.maxAng = extremeAngle;
-                        aromSlider.startAssessment(extremeAngle);
-                        aromSlider.UpdateMinMaxvalues = true;
-
-                        // Reset tracking variables
-                        postConfirmForwardReversals = 0;
-                        postConfirmBackwardReversals = 0;
-                        forwardLimit = extremeAngle;
-                        backwardLimit = extremeAngle;
-                        lastAngle = extremeAngle;
-
-                        AppLogger.LogInfo($"AROM assessment started from extreme point: {displayExtreme:F1}{extremeUnit}");
-                    }
-                    else
-                    {
-                        relaxText.text = $"Please move to an extreme point first\n"
-                            + $"Current: {displayExtreme:F1}{extremeUnit}";
-                    }
                     isButtonPressed = false;
+                    InitTrial(0);
                 }
                 break;
 
-            case AssessStates.ASSESS:
-                TrackAROMWithFeedback();
-                _tmin = aromSlider.minAng;
-                _tmax = aromSlider.maxAng;
+            case AssessStates.TRIAL_RUNNING:
+                UpdateVelocityAndRest();
+                UpdateCycleDetection();
+                ShowTrialRunningUI();
+                break;
 
-                startButton.SetActive(false);
-                string unit = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? "cm" : "°";
-                float displayMin = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? ConvertToCM(aromSlider.minAng) : aromSlider.minAng;
-                float displayMax = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? ConvertToCM(aromSlider.maxAng) : aromSlider.maxAng;
-
-                relaxText.text = $"Exploring AROM\n"
-                    + $"Min: {displayMin:F1}{unit} | Max: {displayMax:F1}{unit}\n"
-                    + $"Range: {(displayMax - displayMin):F1}{unit}\n"
-                    + "Press PLUTO button to confirm";
-
-                // Transition to AROM_LOCKED or skip to PROM when button pressed
+            case AssessStates.TRIAL_COMPLETE:
+                ShowTrialCompleteUI();
                 if (isButtonPressed || Input.GetKeyDown(KeyCode.Return))
                 {
-                    float aromRange = _tmax - _tmin;
-
-                    // If range is below 5 degrees, skip confirmation and go to PROM
-                    if (Mathf.Abs(aromRange) < MIN_AROM_RANGE)
+                    isButtonPressed = false;
+                    int nextTrial = _currentTrial + 1;
+                    if (nextTrial < NUM_TRIALS)
                     {
-                        AppLogger.LogInfo($"AROM range below {MIN_AROM_RANGE} degrees ({aromRange:F1}{unit}) - Skipping confirmation, moving to PROM");
-                        OnNextButtonClick();
+                        InitTrial(nextTrial);
                     }
                     else
                     {
-                        _state = AssessStates.AROM_LOCKED;
-                        aromSlider.UpdateMinMaxvalues = false;
-                        aromConfirmed = true; // Mark AROM as confirmed
-                        AppLogger.LogInfo($"AROM assessment complete - Range: {displayMin:F1}{unit} to {displayMax:F1}{unit}");
+                        FinishAssessment();
                     }
-                    isButtonPressed = false;
                 }
                 break;
 
-            case AssessStates.AROM_LOCKED:
-                startButton.SetActive(false);
-
-                float currentMin = _tmin;
-                float currentMax = _tmax;
-                string unit2 = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? "cm" : "°";
-                float displayMin2 = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? ConvertToCM(currentMin) : currentMin;
-                float displayMax2 = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? ConvertToCM(currentMax) : currentMax;
-
-                // Track patient reaching both set endpoints
-                TrackPostConfirmationReach(currentMin, currentMax);
-
-                // Check if patient can reach both set points
-                bool bothPointsReachedPostConfirm = (postConfirmForwardReversals >= 1 && postConfirmBackwardReversals >= 1);
-
-                if (bothPointsReachedPostConfirm)
-                {
-                    // Green background color when ready to proceed
-                    if (aromLockedImage != null)
-                        aromLockedImage.color = new Color(0.2f, 0.8f, 0.3f); // Green
-
-                    // Text colors: white for good contrast
-                    if (relaxText != null)
-                        relaxText.color = Color.white;
-                    if (feedbackText != null)
-                        feedbackText.color = Color.white;
-                    if (directionArrow != null)
-                        directionArrow.color = Color.white;
-                    if (lText != null)
-                        lText.color = Color.white;
-                    if (rText != null)
-                        rText.color = Color.white;
-                    if (insText != null)
-                        insText.color = Color.white;
-                    if (cText != null)
-                        cText.color = Color.white;
-                    if (jointAngle != null)
-                        jointAngle.color = Color.white;
-                    if (jointAngleHoc != null)
-                        jointAngleHoc.color = Color.white;
-
-                    feedbackText.text = "Press PLUTO button to proceed";
-                    directionArrow.text = "";
-                    relaxText.text = $"AROM Confirmed!\n"
-                        + $"Min: {displayMin2:F1}{unit2} | Max: {displayMax2:F1}{unit2}\n"
-                        + $"Range: {(displayMax2 - displayMin2):F1}{unit2}";
-                    nextButton.SetActive(false); // Hidden - use PLUTO button instead
-                }
-                else
-                {
-                    // Orange background color when need to reach both points
-                    if (aromLockedImage != null)
-                        aromLockedImage.color = new Color(1f, 0.65f, 0f); // Orange
-
-                    // Text colors: white for visibility
-                    if (relaxText != null)
-                        relaxText.color = Color.white;
-                    if (feedbackText != null)
-                        feedbackText.color = Color.yellow;
-
-                    // Show which point(s) still need to be reached
-                    bool minReached = postConfirmBackwardReversals >= 1;
-                    bool maxReached = postConfirmForwardReversals >= 1;
-
-                    string instruction;
-                    if (!minReached && !maxReached)
-                        instruction = $"Reach both points\nMin: {postConfirmBackwardReversals}/1 | Max: {postConfirmForwardReversals}/1";
-                    else if (!minReached && maxReached)
-                        instruction = $"Reach MIN point: {postConfirmBackwardReversals}/1";
-                    else if (minReached && !maxReached)
-                        instruction = $"Reach MAX point: {postConfirmForwardReversals}/1";
-                    else
-                        instruction = "Ready - Press PLUTO button to proceed";
-
-                    relaxText.text = $"Confirming AROM\n"
-                        + $"Min: {displayMin2:F1}{unit2} | Max: {displayMax2:F1}{unit2}\n"
-                        + $"Range: {(displayMax2 - displayMin2):F1}{unit2}\n\n"
-                        + instruction;
-
-                    feedbackText.text = minReached && maxReached ? "Press PLUTO button to proceed" : "";
-                    directionArrow.text = "";
-                    nextButton.SetActive(false);
-                }
-
-                // Only allow proceed if both points reached
+            case AssessStates.ASSESSMENT_COMPLETE:
+                ShowAssessmentCompleteUI();
                 if (isButtonPressed || Input.GetKeyDown(KeyCode.Return))
                 {
-                    if (bothPointsReachedPostConfirm)
-                    {
-                        OnNextButtonClick();
-                        nextButton.SetActive(false);
-                        DisablearomGameObjects();
-                        feedbackText.text = "";
-                    }
-                    // Always clear button press flag after handling it
                     isButtonPressed = false;
+                    OnNextButtonClick();
                 }
                 break;
         }
+    }
+
+    // =========================================================================
+    // Trial management
+    // =========================================================================
+    void InitTrial(int trialIndex)
+    {
+        _currentTrial    = trialIndex;
+        _completedCycles = 0;
+        _trialCycles[trialIndex].Clear();
+
+        // Clear previous markers
+        aromSlider.ClearCycleMarkers();
+        aromSlider.UpdateMinMaxvalues = false;
+        aromSlider.HideHandles();
+
+        float startAngle = PlutoComm.angle;
+
+        // Reset slider to start position (both handles at current angle, no fill shown initially)
+        aromSlider.minAng = startAngle;
+        aromSlider.maxAng = startAngle;
+        aromSlider.SliderMin.setSliderVal(startAngle);
+        aromSlider.SliderMax.setSliderVal(startAngle);
+
+        // Start the assessment (hides old ROM reference area)
+        aromSlider.startAssessment(startAngle);
+
+        _velWindow.Clear();
+        _lastAngle = startAngle;
+        _atRest    = false;
+
+        ResetCycleState();
+
+        _state = AssessStates.TRIAL_RUNNING;
+        AppLogger.LogInfo($"AROM Trial {trialIndex + 1} started.");
+    }
+
+    void CompleteCurrentTrial()
+    {
+        var best = GetBestCycle(_trialCycles[_currentTrial]);
+        _trialBests[_currentTrial] = best;
+
+        // Show only the best cycle in bright white/gold, hide all others
+        aromSlider.ClearCycleMarkers();
+        Color bestColor = new Color(1.0f, 0.95f, 0.2f, 1f);  // bright gold
+        aromSlider.AddCycleMarker(best.lo, best.hi, bestColor);
+
+        // Update slider fill to show the best cycle's range
+        aromSlider.SliderMin.setSliderVal(best.lo);
+        aromSlider.SliderMax.setSliderVal(best.hi);
+        aromSlider.minAng = best.lo;
+        aromSlider.maxAng = best.hi;
+
+        float range = best.hi - best.lo;
+        AppLogger.LogInfo(
+            $"Trial {_currentTrial + 1} complete. Best cycle: LO={best.lo:F1}° HI={best.hi:F1}° (range {range:F1}°)"
+            + $" | Slider MinVal={aromSlider.MinValue:F1}° MaxVal={aromSlider.MaxValue:F1}°"
+        );
+
+        _state = AssessStates.TRIAL_COMPLETE;
+    }
+
+    void FinishAssessment()
+    {
+        var final = ComputeFinalArom();
+        _tmin = final.lo;
+        _tmax = final.hi;
+
+        // Find which trial had the best result
+        int bestTrialIndex = 0;
+        float bestRange = _trialBests[0].hi - _trialBests[0].lo;
+        for (int i = 1; i < NUM_TRIALS; i++)
+        {
+            float range = _trialBests[i].hi - _trialBests[i].lo;
+            if (range > bestRange)
+            {
+                bestRange = range;
+                bestTrialIndex = i;
+            }
+        }
+
+        // Find which cycle in the best trial was selected
+        var bestCycles = _trialCycles[bestTrialIndex];
+        var selectedBestCycle = GetBestCycle(bestCycles);
+        int bestCycleIndex = -1;
+        for (int i = 0; i < bestCycles.Count; i++)
+        {
+            if (bestCycles[i].lo == selectedBestCycle.lo && bestCycles[i].hi == selectedBestCycle.hi)
+            {
+                bestCycleIndex = i + 1; // 1-indexed
+                break;
+            }
+        }
+
+        // Clear all markers and show only the final best AROM
+        aromSlider.ClearCycleMarkers();
+        Color finalBestColor = new Color(1.0f, 0.95f, 0.2f, 1f);  // bright gold
+        aromSlider.AddCycleMarker(_tmin, _tmax, finalBestColor);
+
+        // Update slider to show final AROM
+        aromSlider.SliderMin.setSliderVal(_tmin);
+        aromSlider.SliderMax.setSliderVal(_tmax);
+        aromSlider.minAng = _tmin;
+        aromSlider.maxAng = _tmax;
+
+        _state = AssessStates.ASSESSMENT_COMPLETE;
+        AppLogger.LogInfo(
+            $"AROM Assessment complete. Final AROM: {_tmin:F1}° to {_tmax:F1}° ({_tmax - _tmin:F1}°) "
+            + $"from Trial {bestTrialIndex + 1} Cycle {bestCycleIndex}"
+        );
+    }
+
+    // =========================================================================
+    // Velocity, rest, and direction detection
+    // =========================================================================
+    void UpdateVelocityAndRest()
+    {
+        float angle = PlutoComm.angle;
+        float dt    = Time.deltaTime;
+
+        if (dt > 0f)
+        {
+            float v = (angle - _lastAngle) / dt;  // signed deg/s
+            if (_velWindow.Count >= VEL_WINDOW)
+                _velWindow.Dequeue();
+            _velWindow.Enqueue(v);
+        }
+        _lastAngle = angle;
+
+        if (_velWindow.Count < VEL_WINDOW)
+        {
+            _atRest       = false;
+            _currDirection = 0;
+            return;
+        }
+
+        float sum = 0f;
+        foreach (float v in _velWindow) sum += v;
+        float avg = sum / VEL_WINDOW;
+
+        _atRest = Mathf.Abs(avg) < VEL_DIR_THRESHOLD;
+
+        if      (avg >  VEL_DIR_THRESHOLD) _currDirection =  1;  // moving toward HI
+        else if (avg < -VEL_DIR_THRESHOLD) _currDirection = -1;  // moving toward LO
+        else                               _currDirection =  0;  // neutral / at rest
+    }
+
+    // =========================================================================
+    // Cycle detection — dual algorithm (HOC vs. non-HOC)
+    // =========================================================================
+    void UpdateCycleDetection()
+    {
+        if (AppData.Instance.selectedMechanism.IsMechanism("HOC"))
+            UpdateCycleDetection_HOC();
+        else
+            UpdateCycleDetection_NonHOC();
+    }
+
+    // --- HOC: State-based OPENING/CLOSING with rest-gated boundaries ---
+    void UpdateCycleDetection_HOC()
+    {
+        float angle = PlutoComm.angle;
+
+        // Only update boundaries while at rest
+        if (!_atRest) return;
+
+        if (_hocState == HocState.OPENING)
+        {
+            // Track maximum opening (most positive angle)
+            if (angle > _hocPeakOpen)
+            {
+                _hocPeakOpen = angle;
+                AppLogger.LogInfo($"[HOC] OPENING peak updated to {angle:F1}° ({ConvertToCM(angle):F2}cm)");
+            }
+
+            // Detect reversal: if angle drops >0.5cm (0.0873°) from peak, finalize OPEN
+            if (!_hocOpenFinalized && (_hocPeakOpen - angle) > HOC_REVERSAL_THRESHOLD_DEG)
+            {
+                _hocOpenFinalized = true;
+                _finalizedHi = _hocPeakOpen;
+                AppLogger.LogInfo($"[HOC] ✓ OPEN boundary finalized at {_hocPeakOpen:F1}° ({ConvertToCM(_hocPeakOpen):F2}cm)");
+
+                // Switch to CLOSING state
+                _hocState = HocState.CLOSING;
+                _hocPeakClose = angle;
+                AppLogger.LogInfo($"[HOC] State → CLOSING");
+            }
+        }
+        else if (_hocState == HocState.CLOSING)
+        {
+            // Track minimum closing (most negative angle, closer to 0)
+            if (angle < _hocPeakClose)
+            {
+                _hocPeakClose = angle;
+                AppLogger.LogInfo($"[HOC] CLOSING peak updated to {angle:F1}° ({ConvertToCM(angle):F2}cm)");
+            }
+
+            // Detect reversal: if angle increases >0.5cm from the close point, finalize CLOSE
+            if (!_hocCloseFinalized && (angle - _hocPeakClose) > HOC_REVERSAL_THRESHOLD_DEG)
+            {
+                _hocCloseFinalized = true;
+                _finalizedLo = _hocPeakClose;
+                AppLogger.LogInfo($"[HOC] ✓ CLOSE boundary finalized at {_hocPeakClose:F1}° ({ConvertToCM(_hocPeakClose):F2}cm)");
+            }
+        }
+
+        // Cycle complete when both OPEN and CLOSE are finalized
+        if (_hocOpenFinalized && _hocCloseFinalized)
+        {
+            AppLogger.LogInfo($"[HOC] ★ CYCLE {_completedCycles + 1} COMPLETE: {_finalizedLo:F1}° → {_finalizedHi:F1}° (range {ConvertToCM(_finalizedHi - _finalizedLo):F2}cm)");
+            RecordCycle(_finalizedLo, _finalizedHi);
+        }
+    }
+
+    // --- Non-HOC: Direction-based bidirectional with extent guard ---
+    void UpdateCycleDetection_NonHOC()
+    {
+        float angle = PlutoComm.angle;
+
+        // Arm HI and track running maximum
+        if (!_hiFinalized && _currDirection == 1)
+        {
+            if (!_wasGoingHi)
+            {
+                _wasGoingHi = true;
+                _hiArmAngle = angle;
+                AppLogger.LogInfo($"[CYCLE] HI armed at {angle:F1}°");
+            }
+            if (angle > _peakHi)
+            {
+                _peakHi = angle;
+                AppLogger.LogInfo($"[CYCLE] HI peak updated to {angle:F1}° (extent from arm: {_peakHi - _hiArmAngle:F1}°)");
+            }
+        }
+
+        // Arm LO and track running minimum
+        if (!_loFinalized && _currDirection == -1)
+        {
+            if (!_wasGoingLo)
+            {
+                _wasGoingLo = true;
+                _loArmAngle = angle;
+                AppLogger.LogInfo($"[CYCLE] LO armed at {angle:F1}°");
+            }
+            if (angle < _peakLo)
+            {
+                _peakLo = angle;
+                AppLogger.LogInfo($"[CYCLE] LO peak updated to {angle:F1}° (extent from arm: {_loArmAngle - _peakLo:F1}°)");
+            }
+        }
+
+        // Finalize HI: direction flipped to LO, peak moved >5° toward HI, reversed >5° from peak
+        if (!_hiFinalized && _wasGoingHi && _currDirection == -1)
+        {
+            float hiExtent = _peakHi - _hiArmAngle;
+            float hiReversal = _peakHi - angle;
+            AppLogger.LogInfo($"[CYCLE] HI check: angle={angle:F1}° peak={_peakHi:F1}° extent={hiExtent:F1}° reversal={hiReversal:F1}°");
+
+            if (hiExtent > REVERSAL_THRESHOLD && hiReversal > REVERSAL_THRESHOLD)
+            {
+                _finalizedHi = _peakHi;
+                _hiFinalized = true;
+                AppLogger.LogInfo($"[CYCLE] ✓ HI FINALIZED at {_finalizedHi:F1}°");
+            }
+        }
+
+        // Finalize LO: direction flipped to HI, peak moved >5° toward LO, reversed >5° from peak
+        if (!_loFinalized && _wasGoingLo && _currDirection == 1)
+        {
+            float loExtent = _loArmAngle - _peakLo;
+            float loReversal = angle - _peakLo;
+            AppLogger.LogInfo($"[CYCLE] LO check: angle={angle:F1}° peak={_peakLo:F1}° extent={loExtent:F1}° reversal={loReversal:F1}°");
+
+            if (loExtent > REVERSAL_THRESHOLD && loReversal > REVERSAL_THRESHOLD)
+            {
+                _finalizedLo = _peakLo;
+                _loFinalized = true;
+                AppLogger.LogInfo($"[CYCLE] ✓ LO FINALIZED at {_finalizedLo:F1}°");
+            }
+        }
+
+        if (_hiFinalized && _loFinalized)
+        {
+            AppLogger.LogInfo($"[CYCLE] ★ CYCLE {_completedCycles + 1} COMPLETE: {_finalizedLo:F1}° → {_finalizedHi:F1}° (range {_finalizedHi - _finalizedLo:F1}°)");
+            RecordCycle(_finalizedLo, _finalizedHi);
+        }
+    }
+
+    void RecordCycle(float lo, float hi)
+    {
+        _trialCycles[_currentTrial].Add((lo, hi));
+        _completedCycles++;
+
+        float range = hi - lo;
+        AppLogger.LogInfo(
+            $"Trial {_currentTrial + 1} Cycle {_completedCycles}: "
+            + $"{lo:F1}° to {hi:F1}° ({range:F1}°)"
+        );
+
+        // Each cycle gets its own distinct color (red → orange → yellow → green → blue)
+        Color markerColor = CycleColors[(_completedCycles - 1) % CycleColors.Length];
+        aromSlider.AddCycleMarker(lo, hi, markerColor);
+
+        // Update slider display to show widest range seen so far this trial
+        float trialLo = lo, trialHi = hi;
+        foreach (var c in _trialCycles[_currentTrial])
+        {
+            if (c.lo < trialLo) trialLo = c.lo;
+            if (c.hi > trialHi) trialHi = c.hi;
+        }
+        aromSlider.SliderMin.setSliderVal(trialLo);
+        aromSlider.SliderMax.setSliderVal(trialHi);
+
+        if (_completedCycles >= CYCLES_PER_TRIAL)
+        {
+            CompleteCurrentTrial();
+            return;
+        }
+
+        // Reset for next cycle from current position
+        ResetCycleState();
+    }
+
+    void ResetCycleState()
+    {
+        float angle = PlutoComm.angle;
+
+        if (AppData.Instance.selectedMechanism.IsMechanism("HOC"))
+        {
+            // HOC state reset
+            _hocState           = HocState.OPENING;
+            _hocPeakOpen        = angle;
+            _hocPeakClose       = angle;
+            _hocOpenFinalized   = false;
+            _hocCloseFinalized  = false;
+        }
+        else
+        {
+            // Non-HOC state reset
+            _peakHi             = float.NegativeInfinity;
+            _peakLo             = float.PositiveInfinity;
+            _wasGoingHi         = false;
+            _wasGoingLo         = false;
+            _hiArmAngle         = angle;
+            _loArmAngle         = angle;
+            _hiFinalized        = false;
+            _loFinalized        = false;
+            _finalizedHi        = angle;
+            _finalizedLo        = angle;
+        }
+    }
+
+    // =========================================================================
+    // Best cycle / final AROM selection
+    // =========================================================================
+    (float lo, float hi) GetBestCycle(List<(float lo, float hi)> cycles)
+    {
+        // Sliding window: take last 3 cycles, pick the widest range
+        int start = Mathf.Max(0, cycles.Count - 3);
+        (float lo, float hi) best = cycles[start];
+        float bestRange = best.hi - best.lo;
+
+        for (int i = start + 1; i < cycles.Count; i++)
+        {
+            float r = cycles[i].hi - cycles[i].lo;
+            if (r > bestRange)
+            {
+                bestRange = r;
+                best = cycles[i];
+            }
+        }
+        return best;
+    }
+
+    (float lo, float hi) ComputeFinalArom()
+    {
+        (float lo, float hi) best = _trialBests[0];
+        float bestRange = best.hi - best.lo;
+
+        for (int i = 1; i < NUM_TRIALS; i++)
+        {
+            float r = _trialBests[i].hi - _trialBests[i].lo;
+            if (r > bestRange)
+            {
+                bestRange = r;
+                best = _trialBests[i];
+            }
+        }
+        return best;
+    }
+
+    // =========================================================================
+    // UI helpers
+    // =========================================================================
+    void ShowTrialRunningUI()
+    {
+        string unit = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? "cm" : "°";
+        bool isHOC  = AppData.Instance.selectedMechanism.IsMechanism("HOC");
+
+        if (isHOC)
+        {
+            // HOC display: OPENING/CLOSING state
+            float curr = PlutoComm.angle;
+            float displayMin = _hocCloseFinalized ? _finalizedLo : (_hocState == HocState.CLOSING ? _hocPeakClose : curr);
+            float displayMax = _hocOpenFinalized  ? _finalizedHi : (_hocState == HocState.OPENING ? _hocPeakOpen : curr);
+
+            aromSlider.SliderMin.setSliderVal(displayMin);
+            aromSlider.SliderMax.setSliderVal(displayMax);
+            aromSlider.minAng = displayMin;
+            aromSlider.maxAng = displayMax;
+
+            string openStr  = _hocOpenFinalized  ? $"<color=#00FF00>{ConvertToCM(_finalizedHi):F2}cm✓</color>" : $"{ConvertToCM(_hocPeakOpen):F2}cm";
+            string closeStr = _hocCloseFinalized ? $"<color=#00FF00>{ConvertToCM(_finalizedLo):F2}cm✓</color>" : $"{ConvertToCM(_hocPeakClose):F2}cm";
+            string stateStr = _hocState == HocState.OPENING ? "OPEN→" : "←CLOSE";
+            string restIndicator = _atRest ? "<color=#00FF00>●</color>" : "<color=#FF4444>●</color>";
+
+            relaxText.text =
+                $"Trial {_currentTrial + 1}/{NUM_TRIALS}  |  Cycle {_completedCycles + 1}/{CYCLES_PER_TRIAL}\n"
+                + $"Open: {openStr}   Close: {closeStr}\n"
+                + $"{stateStr} {restIndicator}";
+        }
+        else
+        {
+            // Non-HOC display: HI/LO direction-based
+            float displayMin = _wasGoingLo && _peakLo != float.PositiveInfinity ? _peakLo : PlutoComm.angle;
+            float displayMax = _wasGoingHi && _peakHi != float.NegativeInfinity ? _peakHi : PlutoComm.angle;
+            aromSlider.SliderMin.setSliderVal(displayMin);
+            aromSlider.SliderMax.setSliderVal(displayMax);
+            aromSlider.minAng = displayMin;
+            aromSlider.maxAng = displayMax;
+
+            string hiStr, loStr;
+            if (_hiFinalized)
+                hiStr = $"<color=#00FF00>{_finalizedHi:F1}{unit}✓</color>";
+            else if (_wasGoingHi)
+                hiStr = $"{_peakHi:F1}{unit}";
+            else
+                hiStr = "–";
+
+            if (_loFinalized)
+                loStr = $"<color=#00FF00>{_finalizedLo:F1}{unit}✓</color>";
+            else if (_wasGoingLo)
+                loStr = $"{_peakLo:F1}{unit}";
+            else
+                loStr = "–";
+
+            string dirStr = _currDirection == 1 ? "→" : (_currDirection == -1 ? "←" : "·");
+            string restIndicator = _atRest ? "<color=#00FF00>●</color>" : "<color=#FF4444>●</color>";
+
+            relaxText.text =
+                $"Trial {_currentTrial + 1}/{NUM_TRIALS}  |  Cycle {_completedCycles + 1}/{CYCLES_PER_TRIAL}\n"
+                + $"HI: {hiStr}   LO: {loStr}\n"
+                + $"{dirStr} {restIndicator}";
+        }
+
+        feedbackText.text   = "";
+        directionArrow.text = "";
+    }
+
+    void ShowTrialCompleteUI()
+    {
+        var best = _trialBests[_currentTrial];
+        string unit = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? "cm" : "°";
+        float lo = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? ConvertToCM(best.lo) : best.lo;
+        float hi = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? ConvertToCM(best.hi) : best.hi;
+        float range = Mathf.Abs(hi - lo);
+
+        // Ensure slider fill is displaying the best cycle range
+        aromSlider.SliderMin.setSliderVal(best.lo);
+        aromSlider.SliderMax.setSliderVal(best.hi);
+        aromSlider.minAng = best.lo;
+        aromSlider.maxAng = best.hi;
+
+        bool isLastTrial = (_currentTrial >= NUM_TRIALS - 1);
+        string nextPrompt = isLastTrial
+            ? "Press button to finish assessment"
+            : $"Press button to start Trial {_currentTrial + 2}";
+
+        relaxText.text =
+            $"Trial {_currentTrial + 1} Complete!\n"
+            + $"Best range: {lo:F1}{unit} to {hi:F1}{unit} ({range:F1}{unit})\n\n"
+            + nextPrompt;
+
+        feedbackText.text  = "";
+        directionArrow.text = "";
+
+        if (aromLockedImage != null)
+            aromLockedImage.color = new Color(0.2f, 0.8f, 0.3f);
+    }
+
+    void ShowAssessmentCompleteUI()
+    {
+        string unit = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? "cm" : "°";
+        float lo = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? ConvertToCM(_tmin) : _tmin;
+        float hi = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? ConvertToCM(_tmax) : _tmax;
+        float range = Mathf.Abs(hi - lo);
+
+        // Find which trial and cycle was the best
+        int bestTrialIndex = 0;
+        float bestRange = _trialBests[0].hi - _trialBests[0].lo;
+        for (int i = 1; i < NUM_TRIALS; i++)
+        {
+            float r = _trialBests[i].hi - _trialBests[i].lo;
+            if (r > bestRange)
+            {
+                bestRange = r;
+                bestTrialIndex = i;
+            }
+        }
+
+        var bestCycles = _trialCycles[bestTrialIndex];
+        var selectedBestCycle = GetBestCycle(bestCycles);
+        int bestCycleIndex = -1;
+        for (int i = 0; i < bestCycles.Count; i++)
+        {
+            if (bestCycles[i].lo == selectedBestCycle.lo && bestCycles[i].hi == selectedBestCycle.hi)
+            {
+                bestCycleIndex = i + 1; // 1-indexed
+                break;
+            }
+        }
+
+        relaxText.text =
+            $"Assessment Complete!\n"
+            + $"AROM: {lo:F1}{unit} to {hi:F1}{unit} ({range:F1}{unit})\n"
+            + $"Best: Trial {bestTrialIndex + 1} / Cycle {bestCycleIndex}\n\n"
+            + "Press button to continue to PROM";
+
+        feedbackText.text   = "";
+        directionArrow.text = "";
+        nextButton.SetActive(false);
+
+        if (aromLockedImage != null)
+            aromLockedImage.color = new Color(0f / 255f, 55f / 255f, 52f / 255f);
+    }
+
+    // =========================================================================
+    // Save / navigation
+    // =========================================================================
+    public void OnSaveClick()
+    {
+        _tmin = Mathf.Max(_tmin, -angLimit);
+        _tmax = Mathf.Min(_tmax,  angLimit);
+
+        float aromRange = Mathf.Abs(_tmax - _tmin);
+        bool isCPM = aromRange <= MIN_AROM_RANGE;
+
+        AppData.Instance.selectedMechanism.SetNewAromValues(_tmin, _tmax);
+        AppData.Instance.selectedMechanism.SetAromCPM(isCPM);
+
+        AppLogger.LogInfo($"AROM saved — Range: {aromRange:F1}° — CPM: {isCPM}");
+
+        nextButton.SetActive(false);
+        aromSlider.UpdateMinMaxvalues = false;
+        CurrPositioncursor.SetActive(false);
+
+        if (aromLockedImage != null)
+            aromLockedImage.color = new Color(0f / 255f, 55f / 255f, 52f / 255f);
+    }
+
+    public void OnNextButtonClick()
+    {
+        OnSaveClick();
+        panelControl.SelectpROM();
+        startButton.SetActive(false);
+        nextButton.SetActive(false);
     }
 
     public void OnRedoAromClick()
     {
         _state = AssessStates.INIT;
         isButtonPressed = false;
-        aromConfirmed = false;
 
         InitializeAssessment();
-
         UpdateStatusText();
         panelControl.SelectAROM();
         AppData.Instance.selectedMechanism.ResetPromValues();
@@ -400,154 +831,39 @@ public class AROMsceneHandler : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
-    public void OnPlutoButtonReleased()
-    {
-        isButtonPressed = true;
-    }
-
-    private float ConvertToCM(float value) => Mathf.Abs(Mathf.Deg2Rad * value * 6f);
-
-    public void OnNextButtonClick()
-    {
-        OnSaveClick();
-        panelControl.SelectpROM();
-        DisablearomGameObjects();
-    }
-    
     public void OnrestartButtonClick()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
-    public void OnSaveClick()
+    // =========================================================================
+    // PLUTO button
+    // =========================================================================
+    public void OnPlutoButtonReleased()
     {
-        _tmin = (aromSlider.minAng < -angLimit) ? -angLimit : aromSlider.minAng;
-        _tmax = (aromSlider.maxAng > angLimit) ? angLimit : aromSlider.maxAng;
-
-        // Calculate CPM: true if range <= 5 degrees, false otherwise
-        float aromRange = Mathf.Abs(_tmax - _tmin);
-        bool isCPM = aromRange <= MIN_AROM_RANGE;
-
-        // Update new AROM
-        AppData.Instance.selectedMechanism.SetNewAromValues(_tmin, _tmax);
-        AppData.Instance.selectedMechanism.SetAromCPM(isCPM);
-
-        AppLogger.LogInfo($"AROM assessment saved - Range: {aromRange:F1}° - CPM: {isCPM}");
-
-        nextButton.SetActive(false);
-        aromSlider.UpdateMinMaxvalues = false;
-        CurrPositioncursor.SetActive(false);
-        CurrPositioncursorHoc.SetActive(false);
-
-        // Reset image color
-        if (aromLockedImage != null)
-            aromLockedImage.color = new Color(0, 55, 52, 1);
+        isButtonPressed = true;
     }
+
+    // =========================================================================
+    // Utility
+    // =========================================================================
+    private float ConvertToCM(float value) => Mathf.Abs(Mathf.Deg2Rad * value * 6f);
 
     private string FormatRelaxText(float min, float max)
     {
-        return AppData.Instance.selectedMechanism.IsMechanism("HOC") ?
-            $"Prev AROM: {ConvertToCM(min).ToString("0.0")}cm : {ConvertToCM(max).ToString("0.0")}cm (Aperture: {ConvertToCM(max - min).ToString("0.0")}cm)" :
-            $"Prev AROM: {(int)min} : {(int)max} ({(int)(max - min)}°)";
+        return AppData.Instance.selectedMechanism.IsMechanism("HOC")
+            ? $"Prev AROM: {ConvertToCM(min):0.0}cm : {ConvertToCM(max):0.0}cm (Aperture: {ConvertToCM(max - min):0.0}cm)"
+            : $"Prev AROM: {(int)min} : {(int)max} ({(int)(max - min)}°)";
     }
 
-    public void startAssessment()
-    {
-        _state = AssessStates.ASSESS;
-
-        float startAngle = PlutoComm.angle;
-
-        // Reset post-confirmation tracking
-        postConfirmForwardReversals = 0;
-        postConfirmBackwardReversals = 0;
-        lockedMinPoint = 0f;
-        lockedMaxPoint = 0f;
-
-        // Initialize limits to current position (not 0)
-        forwardLimit = startAngle;
-        backwardLimit = startAngle;
-        
-        aromSlider.minAng = startAngle;
-        aromSlider.maxAng = startAngle;
-
-        aromSlider.startAssessment(startAngle);
-        aromSlider.UpdateMinMaxvalues = true;
-
-        AppLogger.LogInfo("AROM assessment started - Patient exploring ROM");
-    }
-
-    void TrackAROMWithFeedback()
-    {
-        float currentAngle = PlutoComm.angle;
-        float delta = currentAngle - lastAngle;
-
-        if (Mathf.Abs(delta) < directionThreshold)
-            return;
-
-        float currentDirection = Mathf.Sign(delta);
-
-        // Update display direction
-        if (directionArrow != null)
-            directionArrow.text = currentDirection > 0 ? "→" : "←";
-
-        // Track min and max as patient moves (updates dynamically)
-        if (currentDirection > 0 && currentAngle > forwardLimit)
-        {
-            forwardLimit = currentAngle;
-        }
-        else if (currentDirection < 0 && currentAngle < backwardLimit)
-        {
-            backwardLimit = currentAngle;
-        }
-
-        lastAngle = currentAngle;
-        lastDirection = currentDirection;
-
-        // Update slider display with tracked limits (not starting from 0)
-        aromSlider.minAng = backwardLimit;
-        aromSlider.maxAng = forwardLimit;
-        aromSlider.SliderMin.setSliderVal(backwardLimit);
-        aromSlider.SliderMax.setSliderVal(forwardLimit);
-
-        // Update adaptive threshold
-        float currentRange = forwardLimit - backwardLimit;
-        directionThreshold = Mathf.Clamp(currentRange * THRESHOLD_PERCENT, THRESHOLD_MIN, THRESHOLD_MAX);
-    }
-
-    void TrackPostConfirmationReach(float currentMin, float currentMax)
-    {
-        float currentAngle = PlutoComm.angle;
-
-        // Store locked points on first entry
-        if (postConfirmForwardReversals == 0 && postConfirmBackwardReversals == 0)
-        {
-            lockedMinPoint = currentMin;
-            lockedMaxPoint = currentMax;
-        }
-
-        // Check if patient has reached the locked min point (one time)
-        if (currentAngle <= lockedMinPoint && postConfirmBackwardReversals < 1)
-        {
-            postConfirmBackwardReversals++;
-        }
-
-        // Check if patient has reached the locked max point (one time)
-        if (currentAngle >= lockedMaxPoint && postConfirmForwardReversals < 1)
-        {
-            postConfirmForwardReversals++;
-        }
-    }
-    
     private void UpdateStatusText()
     {
-        if (AppData.Instance.selectedMechanism.IsMechanism("HOC") == false)
-        {
-            jointAngle.text = (PlutoComm.angle).ToString("0.0");
-        }
-        else
-        {
-            // jointAngle.text = "Aperture" + ConvertToCM(PlutoComm.angle).ToString("0.0") + "cm";
-            // jointAngleHoc.text = "Aperture" + ConvertToCM(PlutoComm.angle).ToString("0.0") + "cm";
-        }
+        jointAngle.text = PlutoComm.angle.ToString("0.0");
+    }
+
+    // Legacy — kept so existing Unity button wiring still works
+    public void OnStartButtonClick()
+    {
+        startButton.SetActive(false);
     }
 }

@@ -78,9 +78,77 @@ All patient data lives as CSV files under `Assets/data/{userID}/data/`:
 ### Assessment Scripts
 
 Located in [Assets/Assessment/scripts/](Assets/Assessment/scripts/). These handle the ROM measurement workflow before therapy begins:
-- `AROMsceneHandler.cs` — active ROM: patient moves freely, reversal detection tracks range
-- `PROMsceneHandler.cs` — passive ROM: validates PROM ≥ AROM
-- `AssistSceneHandler.cs` — APROM assessment using progressive torque via coroutine
+
+#### AROM Assessment (Active Range of Motion)
+**File:** [Assets/Assessment/scripts/AROMsceneHandler.cs](Assets/Assessment/scripts/AROMsceneHandler.cs)
+
+Implements a **structured 3-trial × 5-cycle assessment** with dual cycling algorithms optimized for each mechanism type:
+
+**Trial/Cycle Structure:**
+- 3 independent trials, each requiring 5 complete cycles
+- A cycle = one finalized LOW boundary + one finalized HIGH boundary (order-independent pair)
+- Best range selected from last 3 cycles per trial (sliding window to exclude early learning)
+- Final AROM = widest best-cycle range across all 3 trials
+
+**Dual Cycling Algorithm:**
+
+1. **Non-HOC mechanisms** (Flexion/Extension, Radial/Ulnar Dev, Pronation/Supination):
+   - **Direction-based detection:** Tracks signed velocity (rolling 10-sample window at 100 Hz)
+   - **HI boundary:** Arms when patient moves toward HI, finalizes on reversal >5° after advancing >5° from arm point
+   - **LO boundary:** Arms when patient moves toward LO, finalizes on reversal >5° after advancing >5° from arm point
+   - **Rest-independent:** Reversals fire based on position change alone (no velocity gate)
+   - **Extent guard:** Prevents tiny initial drifts from counting as full boundaries (must move >5° first)
+
+2. **HOC mechanism** (Hand Opening/Closing):
+   - **State-based detection:** Two-state machine (OPENING → CLOSING → repeat)
+   - **OPENING state:** Patient opens hand from rest; tracks maximum angle reached (_hocPeakOpen)
+   - **CLOSING state:** Patient closes hand back; tracks minimum angle reached (_hocPeakClose)
+   - **Rest-gated boundaries:** Boundaries only update while patient is nearly still (<2 deg/s average)
+   - **Reversal threshold:** 0.5 cm (≈0.0873° at 6cm radius) — lower than non-HOC due to smaller ROM
+   - **Cycle completion:** Both OPENING and CLOSING extremes must be finalized
+
+**Real-Time UI:**
+- Slider shows current explored range (fill spans min/max reached so far, updates every frame)
+- Direction arrow shows current movement direction (→ / ← / ·)
+- Rest indicator (● green when patient is still, red when moving)
+- Cycle marker lines drawn in distinct colors per cycle (red → orange → yellow → green → blue)
+- For HOC: "Open: X cm   Close: Y cm" with state indicator (OPEN→ / ←CLOSE)
+- For non-HOC: "HI: X°   LO: Y°" with direction arrow
+
+**Trial Completion:**
+- When 5th cycle completes, best cycle selected (widest range from cycles 3–5)
+- All cycle markers cleared; only best cycle drawn in gold
+- Slider fill updated to show best cycle's range
+- User confirms or advances to next trial via PLUTO button
+
+**Assessment Completion (After 3 Trials):**
+- Final best AROM = widest best-cycle range across all 3 trials
+- FinishAssessment() identifies which trial had the best result and which cycle within that trial
+- All previous trial markers cleared
+- Gold marker lines drawn at the final best AROM range (matching the cyan fill position)
+- Display shows: "Best: Trial X / Cycle Y" to indicate which trial and cycle was selected
+- Slider fill and marker lines now perfectly aligned at the final AROM range
+- Ready to proceed to PROM assessment
+
+**Logging:**
+- `[CYCLE]` prefix for non-HOC detection events
+- `[HOC]` prefix for HOC-specific state/boundary events
+- Each boundary finalization logged with angle/extent/reversal values
+- Each cycle completion logged with range and trial/cycle index
+- Trial completion logged with best cycle info
+- Assessment completion logged with final AROM and which trial/cycle was selected
+
+**Related Classes:**
+- [Assets/Assessment/DoubleSlider/Scripts/DoubleSlider.cs](Assets/Assessment/DoubleSlider/Scripts/DoubleSlider.cs) — Unified slider component (single handle pair for all mechanisms, no HOC-specific variants)
+- [Assets/Assessment/pannel select.cs](Assets/Assessment/pannel select.cs) — Assessment tab selector (AROM/PROM switching)
+
+#### PROM Assessment (Passive Range of Motion)
+**File:** [Assets/Assessment/scripts/PROMsceneHandler.cs](Assets/Assessment/scripts/PROMsceneHandler.cs)
+- passive ROM: validates PROM ≥ AROM
+
+#### APROM Assessment (Assisted Passive ROM)
+**File:** [Assets/Assessment/scripts/AssistSceneHandler.cs](Assets/Assessment/scripts/AssistSceneHandler.cs)
+- APROM assessment using progressive torque via coroutine
 
 ### Games
 
