@@ -249,7 +249,7 @@ namespace TS.DoubleSlider
 
                 var textComp = labelGo.AddComponent<UnityEngine.UI.Text>();
                 textComp.text = cycleNum.ToString();
-                textComp.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 textComp.fontSize = 12;
                 textComp.fontStyle = FontStyle.Bold;
                 textComp.alignment = TextAnchor.MiddleCenter;
