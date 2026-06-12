@@ -44,7 +44,7 @@ public class PROMsceneHandler : MonoBehaviour
          new string[] { "Flexion", "Extension" },
          new string[] { "Radial Dev" ,"Ulnar Dev"},
          new string[] { "Pronation", "Supination" },
-         new string[]{ "Open", "Open"},
+         new string[]{ "Open", "Closed"},
          new string[] {"",""},
          new string[] {"",""}
      };
@@ -63,7 +63,7 @@ public class PROMsceneHandler : MonoBehaviour
         promSlider.UpdateMinMaxvalues = false;
         nextButton.SetActive(false);
 
-        // Unified slider setup: -93 to 0 for HOC, -angLimit to angLimit for others
+        // Unified slider setup: measured ROM for HOC, -angLimit to angLimit for others
         float sliderMin = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? -93f : -PlutoComm.MECHOFFSETVALUE[PlutoComm.mechanism] - 10.0f;
         float sliderMax = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? 0f : PlutoComm.MECHOFFSETVALUE[PlutoComm.mechanism] + 10.0f;
 
@@ -78,16 +78,24 @@ public class PROMsceneHandler : MonoBehaviour
         // Hide old ROM reference during PROM assessment
         promSlider.startAssessment(PlutoComm.angle);
 
-        // Handle HOC and other mechanisms differently
-        cText.gameObject.SetActive(AppData.Instance.selectedMechanism.IsMechanism("HOC"));
+        // cText label not needed with unified sliders
+        cText.gameObject.SetActive(false);
         rText.gameObject.SetActive(true);
         lText.gameObject.SetActive(true);
-        cText.text = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? "Closed" : "";
 
-        // Handle the right and left sides differently
-        (_rinx, _linx) = AppData.Instance.IsTrainingSide("RIGHT") ? (1, 0) : (0, 1);
-        rText.text = DirectionText[PlutoComm.mechanism - 1][_rinx];
-        lText.text = DirectionText[PlutoComm.mechanism - 1][_linx];
+        // Update the left and right text.
+        // HOC labels are always fixed (not affected by training side)
+        if (AppData.Instance.selectedMechanism.IsMechanism("HOC"))
+        {
+            lText.text = "Open";    // negative side
+            rText.text = "Closed";  // positive side
+        }
+        else
+        {
+            (_rinx, _linx) = AppData.Instance.IsTrainingSide("RIGHT") ? (1, 0) : (0, 1);
+            rText.text = DirectionText[PlutoComm.mechanism - 1][_rinx];
+            lText.text = DirectionText[PlutoComm.mechanism - 1][_linx];
+        }
 
         // Set initial state
         _state = AssessStates.INIT;
@@ -172,7 +180,7 @@ public class PROMsceneHandler : MonoBehaviour
     }
 
 
-    private void checkPromLimits()
+    private bool checkPromLimits()
     {
         bool isHOC=AppData.Instance.selectedMechanism.IsMechanism("HOC");
         bool FME = AppData.Instance.selectedMechanism.IsMechanism("FME1") || AppData.Instance.selectedMechanism.IsMechanism("FME2");
@@ -180,19 +188,17 @@ public class PROMsceneHandler : MonoBehaviour
 
         if (isHOC)
         {
-            Debug.Log($"prom min: {_tmin},{_tmax},  arom :{AppData.Instance.selectedMechanism.newRom.aromMin}, {AppData.Instance.selectedMechanism.newRom.aromMax}");
-            Debug.Log($"condition : {_tmin}, {AppData.Instance.selectedMechanism.newRom.aromMin},{_tmin > AppData.Instance.selectedMechanism.newRom.aromMin},{_tmin< AppData.Instance.selectedMechanism.newRom.aromMin}");
-
-            condition = _tmin > AppData.Instance.selectedMechanism.newRom.aromMin;
-            Debug.Log($"condition : {condition}");
+            Debug.Log($"prom: {_tmin},{_tmax},  arom :{AppData.Instance.selectedMechanism.newRom.aromMin}, {AppData.Instance.selectedMechanism.newRom.aromMax}");
+            // PROM must encompass AROM: promMin <= aromMin AND promMax >= aromMax
+            condition = _tmin > AppData.Instance.selectedMechanism.newRom.aromMin || _tmax < AppData.Instance.selectedMechanism.newRom.aromMax;
+            Debug.Log($"PROM violation (narrower than AROM): {condition}");
         }
         else
         {
-            Debug.Log(_tmin > (AppData.Instance.selectedMechanism.newRom.aromMin + 5.0f));
-            Debug.Log(_tmax < (AppData.Instance.selectedMechanism.newRom.aromMax - 5.0f));
-            Debug.Log($"condition : {_tmin},{_tmax}, {AppData.Instance.selectedMechanism.newRom.aromMin},{AppData.Instance.selectedMechanism.newRom.aromMax},{_tmin > AppData.Instance.selectedMechanism.newRom.aromMin + 5.0f},{_tmax < AppData.Instance.selectedMechanism.newRom.aromMax - 5.0f}");
-            condition = _tmin > (AppData.Instance.selectedMechanism.newRom.aromMin + 5.0f) || _tmax < (AppData.Instance.selectedMechanism.newRom.aromMax - 5.0f);
-            Debug.Log(condition);
+            Debug.Log($"prom: {_tmin},{_tmax}, arom :{AppData.Instance.selectedMechanism.newRom.aromMin},{AppData.Instance.selectedMechanism.newRom.aromMax}");
+            // PROM must encompass AROM: promMin <= aromMin AND promMax >= aromMax
+            condition = _tmin > AppData.Instance.selectedMechanism.newRom.aromMin || _tmax < AppData.Instance.selectedMechanism.newRom.aromMax;
+            Debug.Log($"PROM violation (narrower than AROM): {condition}");
         }
         if (condition)
         {
@@ -204,6 +210,7 @@ public class PROMsceneHandler : MonoBehaviour
             isButtonPressed = false;
             isRestarting = true;
             curreposition.SetActive(true);
+            return false;  // Validation failed
         }
         else
         {
@@ -211,6 +218,7 @@ public class PROMsceneHandler : MonoBehaviour
             Debug.Log($" min :{promSlider._currePostion.value}, arom { AppData.Instance.selectedMechanism.newRom.aromMax},,{promSlider._currePostion.value <= AppData.Instance.selectedMechanism.newRom.aromMax}");
             promSlider.UpdateMinMaxvalues = true;
             curreposition.SetActive(true);
+            return true;  // Validation passed
         }
 
     }
@@ -224,10 +232,12 @@ public class PROMsceneHandler : MonoBehaviour
 
     public void OnNextButtonClick()
     {
-        checkPromLimits();
-        onSavePressed();
-        nextButton.SetActive(false);
-        promSlider.UpdateMinMaxvalues = false;
+        if (checkPromLimits())  // Only save if validation passes
+        {
+            onSavePressed();
+            nextButton.SetActive(false);
+            promSlider.UpdateMinMaxvalues = false;
+        }
     }
 
     public void startAssessment()

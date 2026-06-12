@@ -42,7 +42,7 @@ public class AROMsceneHandler : MonoBehaviour
     private float _tmin, _tmax;
 
     // --- Trial / Cycle structure ---
-    private const int NUM_TRIALS = 3;
+    private const int NUM_TRIALS = 1;
     private const int CYCLES_PER_TRIAL = 5;
     private int _currentTrial = 0;
     private int _completedCycles = 0;
@@ -525,6 +525,8 @@ public class AROMsceneHandler : MonoBehaviour
             {
                 _finalizedHi = _peakHi;
                 _hiFinalized = true;
+                _wasGoingLo = false;
+                _peakLo = float.PositiveInfinity;
                 AppLogger.LogInfo($"[CYCLE] ✓ HI FINALIZED at {_finalizedHi:F1}°");
             }
         }
@@ -540,6 +542,8 @@ public class AROMsceneHandler : MonoBehaviour
             {
                 _finalizedLo = _peakLo;
                 _loFinalized = true;
+                _wasGoingHi = false;
+                _peakHi = float.NegativeInfinity;
                 AppLogger.LogInfo($"[CYCLE] ✓ LO FINALIZED at {_finalizedLo:F1}°");
             }
         }

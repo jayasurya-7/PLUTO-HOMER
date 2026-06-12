@@ -443,7 +443,7 @@ public class AssistsceneHandler : MonoBehaviour
          new string[] { "Flexion", "Extension" },
          new string[] { "Ulnar Dev", "Radial Dev" },
          new string[] { "Pronation", "Supination" },
-         new string[] { "Open", "Open"},
+         new string[] { "Open", "Closed"},
          new string[] { "", "" },
          new string[] { "", "" }
      };
@@ -528,7 +528,7 @@ public class AssistsceneHandler : MonoBehaviour
 
         if (AppData.Instance.selectedMechanism.IsMechanism("HOC"))
         {
-            // HOC: -93° = OPEN (negative), 0° = CLOSED (positive)
+            // HOC: use measured PROM values (negative = OPEN, positive = CLOSED)
             targetPositiveEnd = 0.0f;  // CLOSED limit
             targetNegativeEnd = AppData.Instance.selectedMechanism.newRom.promMin;  // OPEN limit
         }
@@ -539,7 +539,7 @@ public class AssistsceneHandler : MonoBehaviour
             targetPositiveEnd = AppData.Instance.selectedMechanism.newRom.promMax;
         }
 
-        // Unified slider setup: -93 to 0 for HOC, -angLimit to angLimit for others
+        // Unified slider setup: measured ROM for HOC, -angLimit to angLimit for others
         float sliderMin = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? -93f : -angLimit;
         float sliderMax = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? 0f : angLimit;
 
@@ -547,15 +547,23 @@ public class AssistsceneHandler : MonoBehaviour
         apromSlider.minAng = 0;
         apromSlider.maxAng = 0;
         apromSlider.startAssessment(PlutoComm.angle);
-        // Update central text.
-        cText.gameObject.SetActive(AppData.Instance.selectedMechanism.IsMechanism("HOC"));
-        cText.text = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? "Closed" : "";
+        // cText label not needed with unified sliders
+        cText.gameObject.SetActive(false);
         inst1.text = "Press PLUTO button to start the AAN";
 
         // Update the left and right text.
-        (_rinx, _linx) = AppData.Instance.IsTrainingSide("RIGHT") ? (1, 0) : (0, 1);
-        rText.text = DirectionText[PlutoComm.mechanism - 1][_rinx];
-        lText.text = DirectionText[PlutoComm.mechanism - 1][_linx];
+        // HOC labels are always fixed (not affected by training side)
+        if (AppData.Instance.selectedMechanism.IsMechanism("HOC"))
+        {
+            lText.text = "Open";    // negative side
+            rText.text = "Closed";  // positive side
+        }
+        else
+        {
+            (_rinx, _linx) = AppData.Instance.IsTrainingSide("RIGHT") ? (1, 0) : (0, 1);
+            rText.text = DirectionText[PlutoComm.mechanism - 1][_rinx];
+            lText.text = DirectionText[PlutoComm.mechanism - 1][_linx];
+        }
 
         // Set the state to INIT.
         _state = AssessStates.INIT;

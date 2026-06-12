@@ -1233,7 +1233,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &188136808
 RectTransform:
   m_ObjectHideFlags: 0
@@ -12398,10 +12398,8 @@ MonoBehaviour:
   inst1: {fileID: 1602685697}
   relaxText: {fileID: 1265882813}
   jointAngle: {fileID: 6630573}
-  jointAngleHoc: {fileID: 1075589465}
   mechName: {fileID: 1095993573}
   CurrPositioncursor: {fileID: 2756669748342342149}
-  CurrPositioncursorHoc: {fileID: 1207974071}
   redoButton: {fileID: 894119480}
   apromSlider: {fileID: 2870106807345754064}
   isSelected: 0
