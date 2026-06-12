@@ -219,7 +219,7 @@ public class AROMsceneHandler : MonoBehaviour
             case AssessStates.INIT:
                 feedbackText.text = "";
                 directionArrow.text = "";
-                relaxText.text = $"AROM Assessment\n{NUM_TRIALS} trials × {CYCLES_PER_TRIAL} cycles each\n\nPress PLUTO button to start Trial 1";
+                relaxText.text = $"AROM Assessment\n{NUM_TRIALS} trials × {CYCLES_PER_TRIAL} cycles each\n\nPress PLUTO button to start Trial 1\n[Esc] to bypass if patient cannot move";
                 if (isButtonPressed || Input.GetKeyDown(KeyCode.Return))
                 {
                     isButtonPressed = false;
@@ -228,6 +228,12 @@ public class AROMsceneHandler : MonoBehaviour
                 break;
 
             case AssessStates.TRIAL_RUNNING:
+                // Allow therapist to bypass if patient cannot move enough
+                if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    BypassAssessment();
+                    return;
+                }
                 UpdateVelocityAndRest();
                 UpdateCycleDetection();
                 ShowTrialRunningUI();
@@ -346,14 +352,17 @@ public class AROMsceneHandler : MonoBehaviour
 
         // Find which cycle in the best trial was selected
         var bestCycles = _trialCycles[bestTrialIndex];
-        var selectedBestCycle = GetBestCycle(bestCycles);
         int bestCycleIndex = -1;
-        for (int i = 0; i < bestCycles.Count; i++)
+        if (bestCycles.Count > 0)
         {
-            if (bestCycles[i].lo == selectedBestCycle.lo && bestCycles[i].hi == selectedBestCycle.hi)
+            var selectedBestCycle = GetBestCycle(bestCycles);
+            for (int i = 0; i < bestCycles.Count; i++)
             {
-                bestCycleIndex = i + 1; // 1-indexed
-                break;
+                if (bestCycles[i].lo == selectedBestCycle.lo && bestCycles[i].hi == selectedBestCycle.hi)
+                {
+                    bestCycleIndex = i + 1; // 1-indexed
+                    break;
+                }
             }
         }
 
@@ -369,9 +378,12 @@ public class AROMsceneHandler : MonoBehaviour
         aromSlider.maxAng = _tmax;
 
         _state = AssessStates.ASSESSMENT_COMPLETE;
+        string logInfo = bestCycleIndex > 0
+            ? $"from Trial {bestTrialIndex + 1} Cycle {bestCycleIndex}"
+            : $"from Trial {bestTrialIndex + 1} (Bypass)";
         AppLogger.LogInfo(
             $"AROM Assessment complete. Final AROM: {_tmin:F1}° to {_tmax:F1}° ({_tmax - _tmin:F1}°) "
-            + $"from Trial {bestTrialIndex + 1} Cycle {bestCycleIndex}"
+            + logInfo
         );
     }
 
@@ -620,6 +632,45 @@ public class AROMsceneHandler : MonoBehaviour
     }
 
     // =========================================================================
+    // Bypass for low-ROM patients
+    // =========================================================================
+    void BypassAssessment()
+    {
+        float lo, hi;
+
+        if (AppData.Instance.selectedMechanism.IsMechanism("HOC"))
+        {
+            lo = _hocPeakClose;  // minimum reached during closing phase
+            hi = _hocPeakOpen;   // maximum reached during opening phase
+        }
+        else
+        {
+            lo = _peakLo == float.PositiveInfinity ? PlutoComm.angle : _peakLo;
+            hi = _peakHi == float.NegativeInfinity ? PlutoComm.angle : _peakHi;
+        }
+
+        // If some cycles completed, take the best of those too
+        if (_trialCycles[_currentTrial].Count > 0)
+        {
+            var best = GetBestCycle(_trialCycles[_currentTrial]);
+            if (best.hi - best.lo > hi - lo)
+            {
+                lo = best.lo;
+                hi = best.hi;
+            }
+        }
+
+        _trialBests[_currentTrial] = (lo, hi);
+
+        // Fill any unrun future trials with the same result
+        for (int i = _currentTrial + 1; i < NUM_TRIALS; i++)
+            _trialBests[i] = (lo, hi);
+
+        AppLogger.LogInfo($"[BYPASS] AROM assessment bypassed at trial {_currentTrial + 1}. Range: {lo:F1}° → {hi:F1}°");
+        FinishAssessment();
+    }
+
+    // =========================================================================
     // Best cycle / final AROM selection
     // =========================================================================
     (float lo, float hi) GetBestCycle(List<(float lo, float hi)> cycles)
@@ -777,21 +828,27 @@ public class AROMsceneHandler : MonoBehaviour
         }
 
         var bestCycles = _trialCycles[bestTrialIndex];
-        var selectedBestCycle = GetBestCycle(bestCycles);
         int bestCycleIndex = -1;
-        for (int i = 0; i < bestCycles.Count; i++)
+
+        // If bypass was used, there may be no completed cycles
+        if (bestCycles.Count > 0)
         {
-            if (bestCycles[i].lo == selectedBestCycle.lo && bestCycles[i].hi == selectedBestCycle.hi)
+            var selectedBestCycle = GetBestCycle(bestCycles);
+            for (int i = 0; i < bestCycles.Count; i++)
             {
-                bestCycleIndex = i + 1; // 1-indexed
-                break;
+                if (bestCycles[i].lo == selectedBestCycle.lo && bestCycles[i].hi == selectedBestCycle.hi)
+                {
+                    bestCycleIndex = i + 1; // 1-indexed
+                    break;
+                }
             }
         }
 
+        string cycleInfo = bestCycleIndex > 0 ? $"Best: Trial {bestTrialIndex + 1} / Cycle {bestCycleIndex}" : $"Best: Trial {bestTrialIndex + 1} / Bypass";
         relaxText.text =
             $"Assessment Complete!\n"
             + $"AROM: {lo:F1}{unit} to {hi:F1}{unit} ({range:F1}{unit})\n"
-            + $"Best: Trial {bestTrialIndex + 1} / Cycle {bestCycleIndex}\n\n"
+            + $"{cycleInfo}\n\n"
             + "Press button to continue to PROM";
 
         feedbackText.text   = "";
