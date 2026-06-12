@@ -241,26 +241,41 @@ namespace TS.DoubleSlider
             rt.anchoredPosition = Vector2.zero;
             rt.SetAsLastSibling();
 
-            // Add cycle number label above the line
+            // Add cycle number badge (circle with number) above the line
             if (cycleNum > 0)
             {
-                var labelGo = new GameObject($"CycleLabel_{cycleNum}");
-                labelGo.transform.SetParent(go.transform, false);
+                var badgeGo = new GameObject($"CycleBadge_{cycleNum}");
+                badgeGo.transform.SetParent(go.transform, false);
 
-                var textComp = labelGo.AddComponent<UnityEngine.UI.Text>();
+                // Circle background
+                var badgeBg = badgeGo.AddComponent<UnityEngine.UI.Image>();
+                badgeBg.color = color;
+                badgeBg.raycastTarget = false;
+
+                var badgeRt = badgeGo.GetComponent<RectTransform>();
+                badgeRt.anchorMin = new Vector2(0.5f, 1.0f);
+                badgeRt.anchorMax = new Vector2(0.5f, 1.0f);
+                badgeRt.sizeDelta = new Vector2(28f, 28f);
+                badgeRt.anchoredPosition = new Vector2(0f, 8f);
+
+                // Number text (white, larger)
+                var textGo = new GameObject("Number");
+                textGo.transform.SetParent(badgeGo.transform, false);
+
+                var textComp = textGo.AddComponent<UnityEngine.UI.Text>();
                 textComp.text = cycleNum.ToString();
                 textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                textComp.fontSize = 12;
+                textComp.fontSize = 16;
                 textComp.fontStyle = FontStyle.Bold;
                 textComp.alignment = TextAnchor.MiddleCenter;
-                textComp.color = color;
+                textComp.color = Color.white;
                 textComp.raycastTarget = false;
 
-                var labelRt = labelGo.GetComponent<RectTransform>();
-                labelRt.anchorMin = new Vector2(0.5f, 1.0f);
-                labelRt.anchorMax = new Vector2(0.5f, 1.0f);
-                labelRt.sizeDelta = new Vector2(20f, 16f);
-                labelRt.anchoredPosition = new Vector2(0f, 5f);
+                var textRt = textGo.GetComponent<RectTransform>();
+                textRt.anchorMin = Vector2.zero;
+                textRt.anchorMax = Vector2.one;
+                textRt.offsetMin = Vector2.zero;
+                textRt.offsetMax = Vector2.zero;
             }
         }
     }

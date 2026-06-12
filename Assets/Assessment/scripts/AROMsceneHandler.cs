@@ -270,6 +270,10 @@ public class AROMsceneHandler : MonoBehaviour
         _completedCycles = 0;
         _trialCycles[trialIndex].Clear();
 
+        // Reset panel background color to default (dark slate)
+        if (aromLockedImage != null)
+            aromLockedImage.color = new Color(0.17f, 0.24f, 0.31f, 1f);  // Dark slate gray
+
         // Clear previous markers
         aromSlider.ClearCycleMarkers();
         aromSlider.UpdateMinMaxvalues = false;
