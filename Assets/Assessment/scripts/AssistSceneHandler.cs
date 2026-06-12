@@ -422,14 +422,12 @@ public class AssistsceneHandler : MonoBehaviour
     public TMP_Text relaxText;
     
     public TMP_Text jointAngle;
-    public TMP_Text jointAngleHoc;
     public TextMeshProUGUI mechName;
 
     private int _linx, _rinx;
     private float _tmin = 0f, _tmax  =0f;
 
     public GameObject CurrPositioncursor;
-    public GameObject CurrPositioncursorHoc;
     public GameObject redoButton;
     private AssessStates _state;
 
@@ -526,19 +524,29 @@ public class AssistsceneHandler : MonoBehaviour
         ResetAssessment();
 
         // Update the min and max values.
-        angLimit = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? PlutoComm.CALIBANGLE[PlutoComm.mechanism] : PlutoComm.MECHOFFSETVALUE[PlutoComm.mechanism];
-        targetNegativeEnd = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? AppData.Instance.selectedMechanism.newRom.promMin : AppData.Instance.selectedMechanism.newRom.promMin;
-        targetPositiveEnd = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? 0.0f: AppData.Instance.selectedMechanism.newRom.promMax;
+        angLimit = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? 93f : PlutoComm.MECHOFFSETVALUE[PlutoComm.mechanism] + 10.0f;
 
+        if (AppData.Instance.selectedMechanism.IsMechanism("HOC"))
+        {
+            // HOC: -93° = OPEN (negative), 0° = CLOSED (positive)
+            targetPositiveEnd = 0.0f;  // CLOSED limit
+            targetNegativeEnd = AppData.Instance.selectedMechanism.newRom.promMin;  // OPEN limit
+        }
+        else
+        {
+            // Non-HOC: standard positive/negative ranges
+            targetNegativeEnd = AppData.Instance.selectedMechanism.newRom.promMin;
+            targetPositiveEnd = AppData.Instance.selectedMechanism.newRom.promMax;
+        }
 
-        float sliderPE = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? -AppData.Instance.selectedMechanism.newRom.promMin : AppData.Instance.selectedMechanism.newRom.promMax;
-        float sliderNE = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? AppData.Instance.selectedMechanism.newRom.promMin : AppData.Instance.selectedMechanism.newRom.promMin;
+        // Unified slider setup: -93 to 0 for HOC, -angLimit to angLimit for others
+        float sliderMin = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? -93f : -angLimit;
+        float sliderMax = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? 0f : angLimit;
 
-       apromSlider.Setup(sliderNE, sliderPE, 0, 0);
-
-        //apromSlider.Setup(-angLimit, angLimit, 0, 0);
+        apromSlider.Setup(sliderMin, sliderMax, 0, 0);
         apromSlider.minAng = 0;
         apromSlider.maxAng = 0;
+        apromSlider.startAssessment(PlutoComm.angle);
         // Update central text.
         cText.gameObject.SetActive(AppData.Instance.selectedMechanism.IsMechanism("HOC"));
         cText.text = AppData.Instance.selectedMechanism.IsMechanism("HOC") ? "Closed" : "";
@@ -784,18 +792,14 @@ public class AssistsceneHandler : MonoBehaviour
         PlutoComm.sendHeartbeat();
 
         currentAngle = PlutoComm.angle;
-        // jointAngle.text = $"{((int)PlutoComm.angle).ToString()} + Torque :{PlutoComm.target}";
         jointAngle.text = $"Angle: {((int)PlutoComm.angle).ToString()}";
-        jointAngleHoc.text = ((int)PlutoComm.getHOCDisplay(PlutoComm.angle)).ToString();
         runAssessmentStateMachine();
-        // Debug.Log($" ct: {PlutoComm.CONTROLTYPE[PlutoComm.controlType]} + tor :{PlutoComm.target}");
     }
 
     void runAssessmentStateMachine()
     {
         Debug.Log($"state : {_state}");
         CurrPositioncursor.SetActive(true);
-        CurrPositioncursorHoc.SetActive(AppData.Instance.selectedMechanism.IsMechanism("HOC"));
         switch (_state)
         {
             case AssessStates.INIT:
@@ -868,7 +872,6 @@ public class AssistsceneHandler : MonoBehaviour
         AppData.Instance.selectedMechanism.SaveAssessmentData();
         apromSlider.UpdateMinMaxvalues = false;
         CurrPositioncursor.SetActive(false);
-        CurrPositioncursorHoc.SetActive(false);
     }
 
     private string FormatRelaxText(float min, float max)
@@ -891,15 +894,7 @@ public class AssistsceneHandler : MonoBehaviour
 
     private void UpdateStatusText()
     {
-        if (AppData.Instance.selectedMechanism.IsMechanism("HOC") == false)
-        {
-            jointAngle.text = $"{(PlutoComm.angle).ToString("0.0")}+ torque :{PlutoComm.target}";
-        }
-        else
-        {
-            jointAngle.text = "Aperture" + ConvertToCM(PlutoComm.angle).ToString("0.0") + "cm";
-            jointAngleHoc.text = "Aperture" + ConvertToCM(PlutoComm.angle).ToString("0.0") + "cm";
-        }
+        jointAngle.text = $"Angle: {PlutoComm.angle.ToString("0.0")}";
     }
 }
 

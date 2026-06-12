@@ -73,7 +73,7 @@ public class AROMsceneHandler : MonoBehaviour
     private float _hocPeakOpen;     // max angle reached during OPENING
     private float _hocPeakClose;    // min angle reached during CLOSING
     private bool _hocOpenFinalized, _hocCloseFinalized;
-    private const float HOC_REVERSAL_THRESHOLD_DEG = 0.0873f;  // ~0.5 cm at radius 6cm
+    private const float HOC_REVERSAL_THRESHOLD_DEG = 5f;  // 5 degrees, same as non-HOC
 
     // --- Algorithm constants ---
     private const float REVERSAL_THRESHOLD = 5f;
@@ -85,7 +85,7 @@ public class AROMsceneHandler : MonoBehaviour
         new string[] { "Flexion",   "Extension" },
         new string[] { "Radial Dev","Ulnar Dev"  },
         new string[] { "Pronation", "Supination" },
-        new string[] { "Open",      "Open"       },
+        new string[] { "Closed",      "Open"     },
         new string[] { "",          ""           },
         new string[] { "",          ""           }
     };

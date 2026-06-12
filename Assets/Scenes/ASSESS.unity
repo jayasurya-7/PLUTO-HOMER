@@ -795,21 +795,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _sliderMin: {fileID: 430137664}
   _sliderMax: {fileID: 1595487300}
-  _sliderMinHoc: {fileID: 544301050}
-  _sliderMaxHoc: {fileID: 459133932}
   _currePostion: {fileID: 1161884331}
-  _currePostionHoc: {fileID: 1356018270}
   warningText: {fileID: 0}
   _fillArea: {fileID: 390348115}
-  _fillAreahoc: {fileID: 2056993662}
-  _fillAreahocleft: {fileID: 0}
   oldROMArea: {fileID: 1165761094}
-  oldROMAreaHoc: {fileID: 0}
   _setupOnStart: 0
   _minValue: -70
   _maxValue: 70
-  _minValueHoc: 0
-  _maxValueHoc: 0
   _minDistance: 0
   _wholeNumbers: 0
   _initialMinValue: -10
@@ -4575,21 +4567,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _sliderMin: {fileID: 1445414502}
   _sliderMax: {fileID: 381074693}
-  _sliderMinHoc: {fileID: 605544795}
-  _sliderMaxHoc: {fileID: 907813164}
   _currePostion: {fileID: 1109818352}
-  _currePostionHoc: {fileID: 427194337}
   warningText: {fileID: 0}
   _fillArea: {fileID: 453860596}
-  _fillAreahoc: {fileID: 1034717366}
-  _fillAreahocleft: {fileID: 1724380717}
   oldROMArea: {fileID: 1550094941}
-  oldROMAreaHoc: {fileID: 301471876}
   _setupOnStart: 0
   _minValue: -70
   _maxValue: 70
-  _minValueHoc: 0
-  _maxValueHoc: 0
   _minDistance: 0
   _wholeNumbers: 0
   _initialMinValue: -10
@@ -7349,15 +7333,12 @@ MonoBehaviour:
   relaxText: {fileID: 1305638951}
   feedbackText: {fileID: 1785098650}
   jointAngle: {fileID: 1473497566}
-  jointAngleHoc: {fileID: 2029941214}
   directionArrow: {fileID: 1992517293}
   nextButton: {fileID: 7449488}
   startButton: {fileID: 1808124141}
   CurrPositioncursor: {fileID: 1496658277}
-  CurrPositioncursorHoc: {fileID: 1200861006}
   aromLockedImage: {fileID: 1786077524}
   aromSlider: {fileID: 528539155}
-  aromSliderHOC: {fileID: 0}
   isSelected: 0
   panelControl: {fileID: 1932140814}
 --- !u!114 &413374365
@@ -8105,21 +8086,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _sliderMin: {fileID: 1775491228}
   _sliderMax: {fileID: 2110313755}
-  _sliderMinHoc: {fileID: 1652982047}
-  _sliderMaxHoc: {fileID: 1457724034}
   _currePostion: {fileID: 654401373}
-  _currePostionHoc: {fileID: 570832321}
   warningText: {fileID: 0}
   _fillArea: {fileID: 1071497299}
-  _fillAreahoc: {fileID: 1085086801}
-  _fillAreahocleft: {fileID: 20860819}
   oldROMArea: {fileID: 1528673127}
-  oldROMAreaHoc: {fileID: 2067614075}
   _setupOnStart: 0
   _minValue: -70
   _maxValue: 70
-  _minValueHoc: 0
-  _maxValueHoc: 0
   _minDistance: 0
   _wholeNumbers: 0
   _initialMinValue: -10
@@ -8429,8 +8402,8 @@ RectTransform:
   - {fileID: 356383566}
   m_Father: {fileID: 600432582}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.518, y: 0}
+  m_AnchorMax: {x: 0.518, y: 1}
   m_AnchoredPosition: {x: 7.200012, y: 0.0000076293945}
   m_SizeDelta: {x: 44, y: -0.00001525879}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -9723,21 +9696,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _sliderMin: {fileID: 1256909304}
   _sliderMax: {fileID: 237427067}
-  _sliderMinHoc: {fileID: 1498726244}
-  _sliderMaxHoc: {fileID: 1371539268}
   _currePostion: {fileID: 382207401}
-  _currePostionHoc: {fileID: 1200861008}
   warningText: {fileID: 0}
   _fillArea: {fileID: 1368943027}
-  _fillAreahoc: {fileID: 587736517}
-  _fillAreahocleft: {fileID: 523557003}
   oldROMArea: {fileID: 1187960997}
-  oldROMAreaHoc: {fileID: 1564326633}
   _setupOnStart: 0
   _minValue: -70
   _maxValue: 70
-  _minValueHoc: 0
-  _maxValueHoc: 0
   _minDistance: 0
   _wholeNumbers: 0
   _initialMinValue: -10
@@ -11634,7 +11599,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &587736517
 RectTransform:
   m_ObjectHideFlags: 0
@@ -15407,8 +15372,8 @@ RectTransform:
   - {fileID: 1075589464}
   m_Father: {fileID: 292922130}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.536, y: 0}
+  m_AnchorMax: {x: 0.536, y: 1}
   m_AnchoredPosition: {x: 178.2, y: 0.0000038146973}
   m_SizeDelta: {x: 44, y: 0}
   m_Pivot: {x: 3.7951417, y: 0.49999958}
@@ -21444,7 +21409,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1200861007
 RectTransform:
   m_ObjectHideFlags: 0
@@ -21696,7 +21661,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1207974072
 RectTransform:
   m_ObjectHideFlags: 0
@@ -23054,8 +23019,8 @@ RectTransform:
   - {fileID: 206169993}
   m_Father: {fileID: 318166836}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.53, y: 0}
+  m_AnchorMax: {x: 0.53, y: 1}
   m_AnchoredPosition: {x: 0, y: 0.0000076293945}
   m_SizeDelta: {x: 44, y: -0.000015258789}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -23658,7 +23623,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1288365673
 RectTransform:
   m_ObjectHideFlags: 0
@@ -25502,7 +25467,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1371539267
 RectTransform:
   m_ObjectHideFlags: 0
@@ -26026,7 +25991,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1395725500
 RectTransform:
   m_ObjectHideFlags: 0
@@ -28315,7 +28280,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1498726243
 RectTransform:
   m_ObjectHideFlags: 0
@@ -28946,8 +28911,8 @@ RectTransform:
   - {fileID: 1159791769}
   m_Father: {fileID: 16922389}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.518, y: 0}
+  m_AnchorMax: {x: 0.518, y: 1}
   m_AnchoredPosition: {x: 7.200012, y: 0.0000076293945}
   m_SizeDelta: {x: 44, y: -0.00001525879}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -29040,7 +29005,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1531369495
 RectTransform:
   m_ObjectHideFlags: 0
@@ -32130,8 +32095,8 @@ RectTransform:
   - {fileID: 1702333043}
   m_Father: {fileID: 181156747}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.53, y: 0}
+  m_AnchorMax: {x: 0.53, y: 1}
   m_AnchoredPosition: {x: 0, y: 0.0000076293945}
   m_SizeDelta: {x: 44, y: -0.000015258789}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -35360,8 +35325,8 @@ RectTransform:
   - {fileID: 2029941213}
   m_Father: {fileID: 2074420586}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.536, y: 0}
+  m_AnchorMax: {x: 0.536, y: 1}
   m_AnchoredPosition: {x: 178.2, y: 0.0000038146973}
   m_SizeDelta: {x: 44, y: 0}
   m_Pivot: {x: 3.7951417, y: 0.49999958}
@@ -41391,21 +41356,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _sliderMin: {fileID: 2756669748664336516}
   _sliderMax: {fileID: 2756669747963113180}
-  _sliderMinHoc: {fileID: 1288365674}
-  _sliderMaxHoc: {fileID: 1395725501}
   _currePostion: {fileID: 2756669747719973486}
-  _currePostionHoc: {fileID: 1207974073}
   warningText: {fileID: 0}
   _fillArea: {fileID: 2691576242756949962}
-  _fillAreahoc: {fileID: 1531369495}
-  _fillAreahocleft: {fileID: 1681755823}
   oldROMArea: {fileID: 1233907188}
-  oldROMAreaHoc: {fileID: 1538327793}
   _setupOnStart: 0
   _minValue: -70
   _maxValue: 70
-  _minValueHoc: 0
-  _maxValueHoc: 0
   _minDistance: 0
   _wholeNumbers: 0
   _initialMinValue: -10
@@ -42160,14 +42117,11 @@ MonoBehaviour:
   cText: {fileID: 188136809}
   relaxText: {fileID: 1265882813}
   JointAngle: {fileID: 6630573}
-  JointAngleHoc: {fileID: 1075589465}
   warningText: {fileID: 1265882813}
   nextButton: {fileID: 1194691562}
   startButton: {fileID: 1276971196}
   curreposition: {fileID: 2756669748342342149}
-  currepositionHoc: {fileID: 1207974071}
   promSlider: {fileID: 2870106807345754064}
-  promSliderHOC: {fileID: 0}
   isSelected: 1
   isButtonPressed: 0
   runOnce: 0
