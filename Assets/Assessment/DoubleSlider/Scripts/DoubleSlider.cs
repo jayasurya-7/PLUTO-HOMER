@@ -199,10 +199,10 @@ namespace TS.DoubleSlider
             _sliderMax.gameObject.SetActive(false);
         }
 
-        public void AddCycleMarker(float lo, float hi, Color color)
+        public void AddCycleMarker(float lo, float hi, Color color, int cycleNum = -1)
         {
-            CreateLineMarker(lo, color);
-            CreateLineMarker(hi, color);
+            CreateLineMarker(lo, color, cycleNum);
+            CreateLineMarker(hi, color, cycleNum);
         }
 
         public void ClearCycleMarkers()
@@ -220,12 +220,13 @@ namespace TS.DoubleSlider
             _oldROMRect.gameObject.SetActive(true);
         }
 
-        private void CreateLineMarker(float angle, Color color)
+        private void CreateLineMarker(float angle, Color color, int cycleNum)
         {
             float n = (_maxValue == _minValue)
                 ? 0.5f
                 : Mathf.Clamp01((angle - _minValue) / (_maxValue - _minValue));
 
+            // Create line marker
             var go = new GameObject("CycleMarker");
             go.transform.SetParent(transform, false);
 
@@ -239,6 +240,28 @@ namespace TS.DoubleSlider
             rt.sizeDelta        = new Vector2(3f, 0f);
             rt.anchoredPosition = Vector2.zero;
             rt.SetAsLastSibling();
+
+            // Add cycle number label above the line
+            if (cycleNum > 0)
+            {
+                var labelGo = new GameObject($"CycleLabel_{cycleNum}");
+                labelGo.transform.SetParent(go.transform, false);
+
+                var textComp = labelGo.AddComponent<UnityEngine.UI.Text>();
+                textComp.text = cycleNum.ToString();
+                textComp.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                textComp.fontSize = 12;
+                textComp.fontStyle = FontStyle.Bold;
+                textComp.alignment = TextAnchor.MiddleCenter;
+                textComp.color = color;
+                textComp.raycastTarget = false;
+
+                var labelRt = labelGo.GetComponent<RectTransform>();
+                labelRt.anchorMin = new Vector2(0.5f, 1.0f);
+                labelRt.anchorMax = new Vector2(0.5f, 1.0f);
+                labelRt.sizeDelta = new Vector2(20f, 16f);
+                labelRt.anchoredPosition = new Vector2(0f, 5f);
+            }
         }
     }
 }

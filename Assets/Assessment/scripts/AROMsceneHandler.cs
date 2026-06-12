@@ -304,7 +304,7 @@ public class AROMsceneHandler : MonoBehaviour
         // Show only the best cycle in bright white/gold, hide all others
         aromSlider.ClearCycleMarkers();
         Color bestColor = new Color(1.0f, 0.95f, 0.2f, 1f);  // bright gold
-        aromSlider.AddCycleMarker(best.lo, best.hi, bestColor);
+        aromSlider.AddCycleMarker(best.lo, best.hi, bestColor, -1);  // -1 = no label for best cycle
 
         // Update slider fill to show the best cycle's range
         aromSlider.SliderMin.setSliderVal(best.lo);
@@ -356,7 +356,7 @@ public class AROMsceneHandler : MonoBehaviour
         // Clear all markers and show only the final best AROM
         aromSlider.ClearCycleMarkers();
         Color finalBestColor = new Color(1.0f, 0.95f, 0.2f, 1f);  // bright gold
-        aromSlider.AddCycleMarker(_tmin, _tmax, finalBestColor);
+        aromSlider.AddCycleMarker(_tmin, _tmax, finalBestColor, -1);  // -1 = no label for final best
 
         // Update slider to show final AROM
         aromSlider.SliderMin.setSliderVal(_tmin);
@@ -422,23 +422,23 @@ public class AROMsceneHandler : MonoBehaviour
     {
         float angle = PlutoComm.angle;
 
-        // Only update boundaries while at rest
-        if (!_atRest) return;
+        // Peak tracking has NO rest gate — we update peaks every frame for smooth slider animation
+        // Rest gate only applies to FINALIZATION (below)
 
         if (_hocState == HocState.OPENING)
         {
-            // Track maximum opening (most positive angle)
-            if (angle > _hocPeakOpen)
+            // Track maximum opening (most negative angle, toward -93)
+            if (!_hocOpenFinalized && angle < _hocPeakOpen)
             {
                 _hocPeakOpen = angle;
                 AppLogger.LogInfo($"[HOC] OPENING peak updated to {angle:F1}° ({ConvertToCM(angle):F2}cm)");
             }
 
-            // Detect reversal: if angle drops >0.5cm (0.0873°) from peak, finalize OPEN
-            if (!_hocOpenFinalized && (_hocPeakOpen - angle) > HOC_REVERSAL_THRESHOLD_DEG)
+            // Detect reversal: only while at rest. If angle increases >5° from peak, finalize OPEN
+            if (!_hocOpenFinalized && _atRest && (angle - _hocPeakOpen) > HOC_REVERSAL_THRESHOLD_DEG)
             {
                 _hocOpenFinalized = true;
-                _finalizedHi = _hocPeakOpen;
+                _finalizedLo = _hocPeakOpen;
                 AppLogger.LogInfo($"[HOC] ✓ OPEN boundary finalized at {_hocPeakOpen:F1}° ({ConvertToCM(_hocPeakOpen):F2}cm)");
 
                 // Switch to CLOSING state
@@ -449,18 +449,18 @@ public class AROMsceneHandler : MonoBehaviour
         }
         else if (_hocState == HocState.CLOSING)
         {
-            // Track minimum closing (most negative angle, closer to 0)
-            if (angle < _hocPeakClose)
+            // Track maximum closing (most positive angle, toward 0)
+            if (!_hocCloseFinalized && angle > _hocPeakClose)
             {
                 _hocPeakClose = angle;
                 AppLogger.LogInfo($"[HOC] CLOSING peak updated to {angle:F1}° ({ConvertToCM(angle):F2}cm)");
             }
 
-            // Detect reversal: if angle increases >0.5cm from the close point, finalize CLOSE
-            if (!_hocCloseFinalized && (angle - _hocPeakClose) > HOC_REVERSAL_THRESHOLD_DEG)
+            // Detect reversal: only while at rest. If angle decreases >5° from peak, finalize CLOSE
+            if (!_hocCloseFinalized && _atRest && (_hocPeakClose - angle) > HOC_REVERSAL_THRESHOLD_DEG)
             {
                 _hocCloseFinalized = true;
-                _finalizedLo = _hocPeakClose;
+                _finalizedHi = _hocPeakClose;
                 AppLogger.LogInfo($"[HOC] ✓ CLOSE boundary finalized at {_hocPeakClose:F1}° ({ConvertToCM(_hocPeakClose):F2}cm)");
             }
         }
@@ -560,7 +560,7 @@ public class AROMsceneHandler : MonoBehaviour
 
         // Each cycle gets its own distinct color (red → orange → yellow → green → blue)
         Color markerColor = CycleColors[(_completedCycles - 1) % CycleColors.Length];
-        aromSlider.AddCycleMarker(lo, hi, markerColor);
+        aromSlider.AddCycleMarker(lo, hi, markerColor, _completedCycles);  // Pass cycle number for label
 
         // Update slider display to show widest range seen so far this trial
         float trialLo = lo, trialHi = hi;
