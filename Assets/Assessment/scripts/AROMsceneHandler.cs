@@ -138,9 +138,18 @@ public class AROMsceneHandler : MonoBehaviour
 
         // cText label not needed with unified sliders
 
-        (_rinx, _linx) = AppData.Instance.IsTrainingSide("RIGHT") ? (1, 0) : (0, 1);
-        rText.text = DirectionText[PlutoComm.mechanism - 1][_rinx];
-        lText.text = DirectionText[PlutoComm.mechanism - 1][_linx];
+        // HOC labels are always fixed (not affected by training side)
+        if (AppData.Instance.selectedMechanism.IsMechanism("HOC"))
+        {
+            lText.text = "Open";    // -93° side (left)
+            rText.text = "Closed";  // 0° side (right)
+        }
+        else
+        {
+            (_rinx, _linx) = AppData.Instance.IsTrainingSide("RIGHT") ? (1, 0) : (0, 1);
+            rText.text = DirectionText[PlutoComm.mechanism - 1][_rinx];
+            lText.text = DirectionText[PlutoComm.mechanism - 1][_linx];
+        }
 
         // Allocate trial data arrays
         _trialCycles = new List<(float, float)>[NUM_TRIALS];
@@ -652,18 +661,17 @@ public class AROMsceneHandler : MonoBehaviour
         if (isHOC)
         {
             // HOC display: OPENING/CLOSING state
-            float curr = PlutoComm.angle;
-            float displayMin = _hocCloseFinalized ? _finalizedLo : (_hocState == HocState.CLOSING ? _hocPeakClose : curr);
-            float displayMax = _hocOpenFinalized  ? _finalizedHi : (_hocState == HocState.OPENING ? _hocPeakOpen : curr);
+            float displayMin = _hocOpenFinalized  ? _finalizedLo : _hocPeakOpen;   // open = most negative (left)
+            float displayMax = _hocCloseFinalized ? _finalizedHi : _hocPeakClose;  // close = most positive (right)
 
             aromSlider.SliderMin.setSliderVal(displayMin);
             aromSlider.SliderMax.setSliderVal(displayMax);
             aromSlider.minAng = displayMin;
             aromSlider.maxAng = displayMax;
 
-            string openStr  = _hocOpenFinalized  ? $"<color=#00FF00>{ConvertToCM(_finalizedHi):F2}cm✓</color>" : $"{ConvertToCM(_hocPeakOpen):F2}cm";
-            string closeStr = _hocCloseFinalized ? $"<color=#00FF00>{ConvertToCM(_finalizedLo):F2}cm✓</color>" : $"{ConvertToCM(_hocPeakClose):F2}cm";
-            string stateStr = _hocState == HocState.OPENING ? "OPEN→" : "←CLOSE";
+            string openStr  = _hocOpenFinalized  ? $"<color=#00FF00>{ConvertToCM(_finalizedLo):F2}cm✓</color>" : $"{ConvertToCM(_hocPeakOpen):F2}cm";
+            string closeStr = _hocCloseFinalized ? $"<color=#00FF00>{ConvertToCM(_finalizedHi):F2}cm✓</color>" : $"{ConvertToCM(_hocPeakClose):F2}cm";
+            string stateStr = _hocState == HocState.OPENING ? "←OPEN" : "CLOSE→";
             string restIndicator = _atRest ? "<color=#00FF00>●</color>" : "<color=#FF4444>●</color>";
 
             relaxText.text =
