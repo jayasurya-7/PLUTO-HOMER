@@ -419,12 +419,13 @@ public class FlappyGameControl : MonoBehaviour
     {
         float spawnInterval = Mathf.Max(0.5f, 2f - (gameSpeed - 10f) * 0.05f);
 
-        if (!gameOver && prevSpawnTime > spawnInterval)
-        {
+        // if (!gameOver && prevSpawnTime > spawnInterval)
+        // {
             prevSpawnTime = 0;
             nTargets++;
             columns[CurrentColumn].transform.position = new Vector3(BirdControl.rb2d.transform.position.x + spawnXposition, targetPosition, 0);
             columns[CurrentColumn].tag = "Target";
+            Debug.Log($"spawn y position:{targetPosition}");
             Debug.Log($"{(BirdControl.rb2d.transform.position.x + spawnXposition, targetPosition, 0)}");
             if (CurrentColumn == 0)
             {
@@ -443,7 +444,7 @@ public class FlappyGameControl : MonoBehaviour
                 CurrentColumn = 0;
             }
 
-        }
+        // }
     }
 
     public void PauseGame()
@@ -674,7 +675,9 @@ public class FlappyGameControl : MonoBehaviour
                     // Get new target position.
                     // targetAngle = HomerTherapy.GetNewTargetPosition(arom, prom);
                     targetAngle = HomerTherapy.GetNewTargetPositionUniformFull(arom, aprom);
+                    Debug.Log($" spawn Target Angle:{targetAngle}");
                     targetPosition = AngleToScreen(targetAngle);
+                    Debug.Log($"spawnColumn Target position: { targetPosition}");
                     spawnColumn();
                     // MOVEDURATION = MoveDuration();
                     //  Debug.Log($"mm :{MOVEDURATION}");
