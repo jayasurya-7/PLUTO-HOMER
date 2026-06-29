@@ -264,6 +264,7 @@ public class summarySceneHandler : MonoBehaviour
 
         _actionQueue.Enqueue(() =>
         {
+            PlutoComm.OnButtonReleased -= onPlutoButtonReleased;
             
             ConnectToRobot.disconnect();
             if (AppData.isNRSVersion)

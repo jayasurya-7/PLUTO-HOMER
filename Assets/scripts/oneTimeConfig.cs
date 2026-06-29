@@ -344,7 +344,7 @@ public class OneTimeConfig : MonoBehaviour
 
 }
  
-// Reads the per-patient JSON: if group is null → unassigned; if "control" → blocked; otherwise show confirmation popup
+// Reads the per-patient JSON: if group is null → unassigned; if "control" → blocked; if activationDate is set → already activated; otherwise show confirmation popup
 private void ProcessPatientDetails(string jsonContent, string homerID)
 {
      var json = JSON.Parse(jsonContent);
@@ -353,23 +353,30 @@ private void ProcessPatientDetails(string jsonContent, string homerID)
          messageText.text = "Invalid patient data format.";
          return;
      }
- 
+
      var groupNode = json["group"];
      if (groupNode == null || groupNode.IsNull || string.IsNullOrEmpty(groupNode.Value))
      {
          messageText.text = $"{homerID} is Unassigned. Please wait — PI should assign a group.";
          return;
      }
- 
+
      if (groupNode.Value.ToLower() == "control")
      {
          messageText.text = $"{homerID} is assigned to the Control group. Cannot enroll in PLUTO.";
          return;
      }
- 
+
+     var activationDateNode = json["activationDate"];
+     if (activationDateNode != null && !activationDateNode.IsNull && !string.IsNullOrEmpty(activationDateNode.Value))
+     {
+         messageText.text = $"{homerID} is already activated. Cannot create a new account.";
+         return;
+     }
+
      string hospID = json["hospitalID"];
      currentTrainingSide = json["trainingSide"];
-     
+
      popUpConfirmationPatientID.text = $"Homer ID: {homerID}\nPatient ID: {hospID}\nTraining Side: {currentTrainingSide}\n\nAre you sure?";
      messageText.text = "";
      popUpPanel.SetActive(true);

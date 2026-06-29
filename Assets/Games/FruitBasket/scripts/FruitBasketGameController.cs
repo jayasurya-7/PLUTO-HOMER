@@ -208,7 +208,18 @@ public class FruitBasketGameController : MonoBehaviour
     {
         starCount.text = $"{AppData.Instance.selectedGame.cummulativeStars.ToString("D2")}";
     }
-        private void initializeGameSpeedController()
+
+    private void CheckForDisconnection()
+    {
+        // If device disconnects and game is playing, exit back to previous scene
+        if (!ConnectToRobot.isPLUTO && isGamePlaying())
+        {
+            AppLogger.LogInfo("[DISCONNECT] Device disconnected during gameplay - exiting game");
+            exitGame(isEmergencyExit: false);
+        }
+    }
+
+    private void initializeGameSpeedController()
     {
         // Hide game speed control initially
         // gameSpeedControl.SetActive(false);
@@ -229,6 +240,8 @@ public class FruitBasketGameController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        // Check for device disconnection during gameplay
+        CheckForDisconnection();
 
         if (isGamePaused && gameState != GameStates.PAUSE) pauseGame();
         else if (!isGamePaused && gameState == GameStates.PAUSE) resumeGame();
@@ -767,12 +780,15 @@ public class FruitBasketGameController : MonoBehaviour
          Destroy(gardenerGameObj);
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
-    public void exitGame()
-    {if(gameState == GameStates.DONE || gameState == GameStates.WAITFORSTART || gameState == GameStates.PAUSE){
+    public void exitGame(bool isEmergencyExit = false)
+    {
+        if(gameState == GameStates.DONE || gameState == GameStates.WAITFORSTART || gameState == GameStates.PAUSE){
             Time.timeScale = 1f;
             AppLogger.LogInfo("Exit Game");
-
-            SceneManager.LoadScene(prevScene);
+            if (!isEmergencyExit)
+            {
+                SceneManager.LoadScene(prevScene);
+            }
         }
         else
         {
@@ -783,37 +799,35 @@ public class FruitBasketGameController : MonoBehaviour
             if (AppData.Instance.speedData.gameSpeed != gameSpeed)  AppData.Instance.speedData.setGameSpeed(gameSpeed);
             AppData.Instance.speedData.setMoveDuration(MOVEDURATION);
 
-            // AppData.Instance.StopTrial(nTargets, nSuccess, nFailure);
-              // Stop the current game trial
-                    if ((scores[0] + nSuccess) > scores[1] && !AppData.Instance.selectedGame.isAchievedToday())
-                    {
-                        AppData.Instance.selectedGame.updateCummulativeStars();
-                AppLogger.LogInfo($"Beat yesterday's score - {AppData.Instance.selectedGameName} game. 1 star added. Stars: {AppData.Instance.selectedGame.cummulativeStars:D2}");      
+            // Stop the current game trial
+            if ((scores[0] + nSuccess) > scores[1] && !AppData.Instance.selectedGame.isAchievedToday())
+            {
+                AppData.Instance.selectedGame.updateCummulativeStars();
+                AppLogger.LogInfo($"Beat yesterday's score - {AppData.Instance.selectedGameName} game. 1 star added. Stars: {AppData.Instance.selectedGame.cummulativeStars:D2}");
+                celebrationPanel.SetActive(true);
+            }
+            AppData.Instance.StopTrial(nTargets, nSuccess, nFailure);
 
-                        celebrationPanel.SetActive(true);
-                    }
-                    AppData.Instance.StopTrial(nTargets, nSuccess, nFailure);
-                    
-                    gameOverPanel.SetActive(!celebrationPanel.gameObject.activeSelf);
-                    
-                    if (gameOverPanel.gameObject.activeSelf)
-                    {
-                        GameOverStar.SetActive(AppData.Instance.selectedGame.isAchievedToday());
-                        yesterdayScoreTxt.text = $"{scores[1]:D4}";
-                        todayScoreTxt.text = $"{(scores[0]+nSuccess):D4}";
-                    }
-                    if (celebrationPanel.gameObject.activeSelf)
-                    {
-                        updateStarCount();
-                        scoreComparisonTxt.text = $"{(scores[0] + nSuccess).ToString("D3")}";
-                    }
+            gameOverPanel.SetActive(!celebrationPanel.gameObject.activeSelf);
+
+            if (gameOverPanel.gameObject.activeSelf)
+            {
+                GameOverStar.SetActive(AppData.Instance.selectedGame.isAchievedToday());
+                yesterdayScoreTxt.text = $"{scores[1]:D4}";
+                todayScoreTxt.text = $"{(scores[0]+nSuccess):D4}";
+            }
+            if (celebrationPanel.gameObject.activeSelf)
+            {
+                updateStarCount();
+                scoreComparisonTxt.text = $"{(scores[0] + nSuccess).ToString("D3")}";
+            }
             gameState = GameStates.DONE;
             Time.timeScale = 1f;
-            SceneManager.LoadScene(prevScene);
-        // AppLogger.LogInfo($"{AppData.Instance.selectedGameName}-- game exit");
+            if (!isEmergencyExit)
+            {
+                SceneManager.LoadScene(prevScene);
+            }
             AppLogger.LogInfo("Exit Game");
-
-
         }
     }
     //shuffle the basket for every trail
@@ -931,10 +945,10 @@ public class FruitBasketGameController : MonoBehaviour
 
 private void OnDestroy()
     {
-        if (ConnectToRobot.isPLUTO)
-        {
+        // if (ConnectToRobot.isPLUTO)
+        // {
             PlutoComm.OnButtonReleased -= onPlutoButtonReleased;
-        }
+        // }
     }
 }
 

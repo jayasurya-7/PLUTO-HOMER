@@ -298,7 +298,7 @@ public static class AppLogger
         // Start Log file only if we are not already logging.
         if (isLogging)
         {
-            return null;
+            return null; //
         }
         if (!Directory.Exists(DataManager.logPath))
         {

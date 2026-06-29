@@ -222,10 +222,10 @@ public class calibrationSceneHandler : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (ConnectToRobot.isPLUTO)
-        {
+        // if (ConnectToRobot.isPLUTO)
+        // {
             PlutoComm.OnButtonReleased -= OnPlutoButtonReleased;
-        }
+        // }
     }
 }
 

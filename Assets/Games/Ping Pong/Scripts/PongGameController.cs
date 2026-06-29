@@ -269,8 +269,22 @@ public class PongGameController : MonoBehaviour
         // Set the initial game speed
         gsc.gameSpeedText.text = $"{AppData.Instance.speedData.gameSpeed:F2}";
     }
+
+    private void CheckForDisconnection()
+    {
+        // If device disconnects and game is playing, exit back to previous scene
+        bool isGamePlaying = gameState != GameStates.WAITING && gameState != GameStates.PAUSED && gameState != GameStates.DONE;
+        if (!ConnectToRobot.isPLUTO && isGamePlaying)
+        {
+            AppLogger.LogInfo("[DISCONNECT] Device disconnected during gameplay - exiting game");
+            ExitGame(isEmergencyExit: false);
+        }
+    }
+
     void Update()
     {
+        // Check for device disconnection during gameplay
+        CheckForDisconnection();
 
         pointCounter.text = enemyScore + "\t\t" +
             playerScore;
@@ -428,35 +442,37 @@ public class PongGameController : MonoBehaviour
         
     }
 
-    public void ExitGame()
+    public void ExitGame(bool isEmergencyExit = false)
     {
         if(gameState == GameStates.DONE || gameState == GameStates.WAITING){
             Time.timeScale = 1f;
-            SceneManager.LoadScene(prevScene);
+            if (!isEmergencyExit)
+            {
+                SceneManager.LoadScene(prevScene);
+            }
             AppLogger.LogInfo("Exit Game");
-
         }
         else
         {
             gameState = GameStates.STOP;
             float gameTime = HomerTherapy.TrialDuration - trialTimeLeft;
-                                   
+
             Others.gameTime = (gameTime < HomerTherapy.TrialDuration) ? gameTime : HomerTherapy.TrialDuration;
             AppData.Instance.aanController.Update(PlutoComm.angle, Time.deltaTime, true);
             if (AppData.Instance.speedData.gameSpeed != gameSpeed)  AppData.Instance.speedData.setGameSpeed(gameSpeed);
-                    AppData.Instance.speedData.setMoveDuration(MOVEDURATION);
+            AppData.Instance.speedData.setMoveDuration(MOVEDURATION);
 
             // Stop the current game trial
             if ((scores[0] + nSuccess) > scores[1] && !AppData.Instance.selectedGame.isAchievedToday())
             {
                 AppData.Instance.selectedGame.updateCummulativeStars();
-                AppLogger.LogInfo($"Beat yesterday's score - {AppData.Instance.selectedGameName} game. 1 star added. Stars: {AppData.Instance.selectedGame.cummulativeStars:D2}");      
+                AppLogger.LogInfo($"Beat yesterday's score - {AppData.Instance.selectedGameName} game. 1 star added. Stars: {AppData.Instance.selectedGame.cummulativeStars:D2}");
                 celebrationPanel.SetActive(true);
             }
             AppData.Instance.StopTrial(nTargets, nSuccess, nFailure);
-            
+
             gameOverPanel.SetActive(!celebrationPanel.gameObject.activeSelf);
-            
+
             if (gameOverPanel.gameObject.activeSelf)
             {
                 GameOverStar.SetActive(AppData.Instance.selectedGame.isAchievedToday());
@@ -468,14 +484,13 @@ public class PongGameController : MonoBehaviour
                 updateStarCount();
                 scoreComparisonTxt.text = $"{(scores[0] + nSuccess).ToString("D3")}";
             }
-            // AppData.Instance.StopTrial(nTargets, nSuccess, nFailure);
             gameState = GameStates.DONE;
             Time.timeScale = 1f;
-            SceneManager.LoadScene(prevScene);
-            // AppLogger.LogInfo($"{AppData.Instance.selectedGameName} -- Exit from game");
+            if (!isEmergencyExit)
+            {
+                SceneManager.LoadScene(prevScene);
+            }
             AppLogger.LogInfo("Exit Game");
-
-            
         }
     }
 
@@ -1044,9 +1059,9 @@ public class PongGameController : MonoBehaviour
     }
      private void OnDestroy()
     {
-        if (ConnectToRobot.isPLUTO)
-        {
+        // if (ConnectToRobot.isPLUTO)
+        // {
             PlutoComm.OnButtonReleased -= onPlutoButtonReleased;
-        }
+        // }
     }
 }

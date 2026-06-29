@@ -171,7 +171,7 @@ public class AROMsceneHandler : MonoBehaviour
 
     void OnDestroy()
     {
-        if (ConnectToRobot.isPLUTO)
+        // if (ConnectToRobot.isPLUTO)
             PlutoComm.OnButtonReleased -= OnPlutoButtonReleased;
     }
 

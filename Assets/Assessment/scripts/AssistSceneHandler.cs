@@ -560,6 +560,10 @@ public class AssistsceneHandler : MonoBehaviour
     {
         jointAngle.text = $"Angle: {PlutoComm.angle.ToString("0.0")}";
     }
+    private void OnDestroy()
+    {
+        PlutoComm.OnButtonReleased -= OnPlutoButtonReleased;
+    }
 }
 
 

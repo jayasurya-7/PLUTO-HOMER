@@ -113,7 +113,7 @@ public class FlappyGameControl : MonoBehaviour
     private GameSpeedController gsc = null;
     bool speedControlsVisible = false;
     public TextMeshProUGUI  finalScore;
-    
+
     public GameObject celebrationPanel;
     public TextMeshProUGUI scoreComparisonTxt;
     public TextMeshProUGUI yesterdayScoreTxt;
@@ -123,7 +123,7 @@ public class FlappyGameControl : MonoBehaviour
     public int _starCount;
     private int[] scores;
     private float mechMinDuration, mechMaxDuration, mechMinThreshold, mechMaxThreshold;
-     [Header("Location BGMs")]
+    [Header("Location BGMs")]
     [SerializeField] private AudioClip ranipetBGM;
     [SerializeField] private AudioClip manipalBGM;
     [SerializeField] private AudioClip ludianaBGM;
@@ -267,8 +267,22 @@ public class FlappyGameControl : MonoBehaviour
     {
         starCount.text = $"{AppData.Instance.selectedGame.cummulativeStars.ToString("D2")}";
     }
+
+    private void CheckForDisconnection()
+    {
+        // If device disconnects and game is playing, exit back to previous scene
+        if (!ConnectToRobot.isPLUTO && IsGamePlaying())
+        {
+            AppLogger.LogInfo("[DISCONNECT] Device disconnected during gameplay - exiting game");
+            exitGame(isEmergencyExit: false);
+        }
+    }
+
     void Update()
     {
+        // Check for device disconnection during gameplay
+        CheckForDisconnection();
+
         if (isGamePaused && gameState != GameStates.PAUSED) PauseGame();
         else if (!isGamePaused && gameState == GameStates.PAUSED) ResumeGame();
         if (changeScene && gameState == GameStates.DONE)
@@ -952,33 +966,36 @@ public class FlappyGameControl : MonoBehaviour
         isGameStarted = true;
     }
  
-    public void exitGame()
+    public void exitGame(bool isEmergencyExit = false)
     {
         if(gameState == GameStates.DONE || gameState == GameStates.WAITING){
             Time.timeScale = 1f;
             AppLogger.LogInfo("Exit Game");
-            SceneManager.LoadScene(prevScene);
+            if (!isEmergencyExit)
+            {
+                SceneManager.LoadScene(prevScene);
+            }
         }
         else
         {
             gameState = GameStates.STOP;
             float gameTime = HomerTherapy.TrialDuration - trialTimeLeft;
-            
+
             Others.gameTime = (gameTime < HomerTherapy.TrialDuration) ? gameTime : HomerTherapy.TrialDuration;
             AppData.Instance.aanController.Update(PlutoComm.angle, Time.deltaTime, true);
             if (AppData.Instance.speedData.gameSpeed != gameSpeed)  AppData.Instance.speedData.setGameSpeed(gameSpeed);
             AppData.Instance.speedData.setMoveDuration(MOVEDURATION);
 
-                                   // Stop the current game trial
+            // Stop the current game trial
             if ((scores[0] + nSuccess) > scores[1] && !AppData.Instance.selectedGame.isAchievedToday())
             {
                 AppData.Instance.selectedGame.updateCummulativeStars();
                 celebrationPanel.SetActive(true);
             }
             AppData.Instance.StopTrial(nTargets, nSuccess, nFailure);
-            
+
             gameOverPanel.SetActive(!celebrationPanel.gameObject.activeSelf);
-            
+
             if (gameOverPanel.gameObject.activeSelf)
             {
                 GameOverStar.SetActive(AppData.Instance.selectedGame.isAchievedToday());
@@ -990,12 +1007,13 @@ public class FlappyGameControl : MonoBehaviour
                 updateStarCount();
                 scoreComparisonTxt.text = $"{(scores[0] + nSuccess).ToString("D3")}";
             }
-            // AppData.Instance.StopTrial(nTargets, nSuccess, nFailure);
             gameState = GameStates.DONE;
             Time.timeScale = 1f;
-            SceneManager.LoadScene(prevScene);
+            if (!isEmergencyExit)
+            {
+                SceneManager.LoadScene(prevScene);
+            }
             AppLogger.LogInfo("Exit Game");
-
         }
     }
 
@@ -1010,10 +1028,10 @@ public class FlappyGameControl : MonoBehaviour
     }
      private void OnDestroy()
     {
-        if (ConnectToRobot.isPLUTO)
-        {
+        // if (ConnectToRobot.isPLUTO)
+        // {
             PlutoComm.OnButtonReleased -= onPlutoButtonReleased;
-        }
+        // }
     }
 
 }

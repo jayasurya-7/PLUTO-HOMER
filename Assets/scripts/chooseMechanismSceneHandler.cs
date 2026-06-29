@@ -297,9 +297,8 @@ public class MechanismSceneHandler : MonoBehaviour
     }
     private void OnDestroy()
     {
-        if (ConnectToRobot.isPLUTO)
-        {
+       
             PlutoComm.OnButtonReleased -= OnPlutoButtonReleased;
-        }
+        
     }
 }

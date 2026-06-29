@@ -202,6 +202,18 @@ public class GameManager : MonoBehaviour
 
         return Mathf.Lerp(mechMaxDuration,mechMinDuration, t);
     }
+
+    private void CheckForDisconnection()
+    {
+        // If device disconnects and game is playing, exit back to previous scene
+        bool isGamePlaying = gameState != GameStates.WAITING && gameState != GameStates.PAUSED && gameState != GameStates.DONE;
+        if (!ConnectToRobot.isPLUTO && isGamePlaying)
+        {
+            AppLogger.LogInfo("[DISCONNECT] Device disconnected during gameplay - exiting game");
+            Exit(isEmergencyExit: false);
+        }
+    }
+
     public void StartGame()
     {
          // Start new trial.
@@ -252,6 +264,8 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
+        // Check for device disconnection during gameplay
+        CheckForDisconnection();
 
         // if (gameOver || currentHighlighted == null) return;
 
@@ -938,10 +952,10 @@ public class GameManager : MonoBehaviour
     }
     private void OnDestroy()
     {
-        if (ConnectToRobot.isPLUTO)
-        {
+        // if (ConnectToRobot.isPLUTO)
+        // {
             PlutoComm.OnButtonReleased -= onPlutoButtonReleased;
-        }
+        // }
     }
 
     public void EndGame()
@@ -1038,53 +1052,55 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    public void Exit()
+    public void Exit(bool isEmergencyExit = false)
     {
         if(gameState == GameStates.DONE || gameState == GameStates.WAITING ){
             Time.timeScale = 1f;
             AppLogger.LogInfo("Exit Game");
-
-            SceneManager.LoadScene(exitScene);
-
+            if (!isEmergencyExit)
+            {
+                SceneManager.LoadScene(exitScene);
+            }
         }
         else
         {
             gameState = GameStates.STOP;
             float gameTime = HomerTherapy.TrialDuration - trialTimeLeft;
-            
+
             Others.gameTime = (gameTime < HomerTherapy.TrialDuration) ? gameTime : HomerTherapy.TrialDuration;
             AppData.Instance.aanController.Update(PlutoComm.angle, Time.deltaTime, true);
             if (AppData.Instance.speedData.gameSpeed != gameSpeed)  AppData.Instance.speedData.setGameSpeed(gameSpeed);
-                    AppData.Instance.speedData.setMoveDuration(highlightDuration);
+            AppData.Instance.speedData.setMoveDuration(highlightDuration);
 
-              // Stop the current game trial
-                    if ((scores[0] + nSuccess) > scores[1] && !AppData.Instance.selectedGame.isAchievedToday())
-                    {
-                        AppData.Instance.selectedGame.updateCummulativeStars();
-                        celebrationPanel.SetActive(true);
-                    }
-                    AppData.Instance.StopTrial(nTargets, nSuccess, nFailure);
-                    
-                    gameOverPanel.SetActive(!celebrationPanel.gameObject.activeSelf);
-                    
-                    if (gameOverPanel.gameObject.activeSelf)
-                    {
-                        GameOverStar.SetActive(AppData.Instance.selectedGame.isAchievedToday());
-                        yesterdayScoreTxt.text = $"{scores[1]:D4}";
-                        todayScoreTxt.text = $"{(scores[0]+nSuccess):D4}";
-                    }
-                    if (celebrationPanel.gameObject.activeSelf)
-                    {
-                        updateStarCount();
-                        scoreComparisonTxt.text = $"{(scores[0] + nSuccess).ToString("D3")}";
-                    }
-            // AppData.Instance.StopTrial(nTargets, nSuccess, nFailure);
+            // Stop the current game trial
+            if ((scores[0] + nSuccess) > scores[1] && !AppData.Instance.selectedGame.isAchievedToday())
+            {
+                AppData.Instance.selectedGame.updateCummulativeStars();
+                celebrationPanel.SetActive(true);
+            }
+            AppData.Instance.StopTrial(nTargets, nSuccess, nFailure);
+
+            gameOverPanel.SetActive(!celebrationPanel.gameObject.activeSelf);
+
+            if (gameOverPanel.gameObject.activeSelf)
+            {
+                GameOverStar.SetActive(AppData.Instance.selectedGame.isAchievedToday());
+                yesterdayScoreTxt.text = $"{scores[1]:D4}";
+                todayScoreTxt.text = $"{(scores[0]+nSuccess):D4}";
+            }
+            if (celebrationPanel.gameObject.activeSelf)
+            {
+                updateStarCount();
+                scoreComparisonTxt.text = $"{(scores[0] + nSuccess).ToString("D3")}";
+            }
             gameState = GameStates.DONE;
             Time.timeScale = 1f;
-            SceneManager.LoadScene(exitScene);
+            if (!isEmergencyExit)
+            {
+                SceneManager.LoadScene(exitScene);
+            }
             AppLogger.LogInfo("Exit Game");
         }
-    
     }
 
 
