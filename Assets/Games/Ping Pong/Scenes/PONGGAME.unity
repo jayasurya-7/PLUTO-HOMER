@@ -7349,7 +7349,7 @@ MonoBehaviour:
       - m_Target: {fileID: 206402966}
         m_TargetAssemblyTypeName: PongGameController, Assembly-CSharp
         m_MethodName: ExitGame
-        m_Mode: 1
+        m_Mode: 6
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
