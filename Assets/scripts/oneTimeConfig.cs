@@ -923,7 +923,7 @@ private void ProcessPatientDetails(string jsonContent, string homerID)
 
         // Updated headers to include all fields
         string headers = "HomerID,StartDate,EndDate,TotalTime,WFE,WURD,FPS,HOC,FME1,FME2,FME1ID,FME2ID,TrainingSide,Location,Group";
-        string data = $"{homerID},{startDate},{endDate},0,0,0,0,0,0,0,-1,-1,{trainingSide},{Location},{group}";
+        string data = $"{homerID},{startDate},{endDate},{totalDuration},{wfe},{wurd},{fps},{hoc},{fme1Time},{fme2Time},{fme1id},{fme2id},{trainingSide},{Location},{group}";
 
         string directoryPath = Path.Combine(Application.dataPath, "data", AppData.Instance.userID, "data");
         string datapath = Path.Combine(directoryPath, "configdata.csv");

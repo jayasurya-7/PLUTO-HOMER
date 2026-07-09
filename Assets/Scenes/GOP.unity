@@ -24630,6 +24630,56 @@ MonoBehaviour:
     m_EmphasisStyles: []
     m_BlurStyles: []
     m_SelectStyles: []
+    markLine:
+      m_Show: 1
+      m_SerieIndex: 0
+      m_OnTop: 1
+      m_Animation:
+        m_Enable: 1
+        m_Type: 0
+        m_Easting: 0
+        m_Threshold: 2000
+        m_UnscaledTime: 0
+        m_FadeIn:
+          m_Enable: 1
+          m_Reverse: 0
+          m_Delay: 0
+          m_Duration: 1000
+        m_FadeOut:
+          m_Enable: 1
+          m_Reverse: 1
+          m_Delay: 0
+          m_Duration: 1000
+        m_Change:
+          m_Enable: 1
+          m_Reverse: 0
+          m_Delay: 0
+          m_Duration: 500
+        m_Addition:
+          m_Enable: 1
+          m_Reverse: 0
+          m_Delay: 0
+          m_Duration: 500
+        m_Hiding:
+          m_Enable: 1
+          m_Reverse: 0
+          m_Delay: 0
+          m_Duration: 500
+        m_Interaction:
+          m_Enable: 1
+          m_Reverse: 0
+          m_Delay: 0
+          m_Duration: 250
+          m_Width:
+            m_Type: 0
+            m_Value: 1.1
+          m_Radius:
+            m_Type: 0
+            m_Value: 1.1
+          m_Offset:
+            m_Type: 1
+            m_Value: 5
+      m_Data: []
   m_SerieCandlesticks: []
   m_SerieEffectScatters: []
   m_SerieHeatmaps: []
@@ -24662,23 +24712,45 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7dca7e3f30a02154abe57ac097da6413, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  barchart: {fileID: 1934016941}
+  lineChart: {fileID: 0}
   title: 
-  ttCummulativeScoreTxt: {fileID: 1249664166}
-  ppCummulativeScoreTxt: {fileID: 317100268}
-  htCummulativeScoreTxt: {fileID: 1451278800}
-  fcCummulativeScoreTxt: {fileID: 945616128}
-  rgCummulativeScoreTxt: {fileID: 1037085425}
-  ppCurrentScoreTxt: {fileID: 0}
-  ttCurrentScoreTxt: {fileID: 0}
-  htCurrentScoreTxt: {fileID: 0}
-  fcCurrentScoreTxt: {fileID: 0}
-  rgCurrentScoreTxt: {fileID: 0}
-  TTstar: {fileID: 0}
-  PPstar: {fileID: 0}
-  HTstar: {fileID: 0}
-  FCstar: {fileID: 0}
-  RRstar: {fileID: 0}
+  WFEstar: {fileID: 0}
+  WURDstar: {fileID: 0}
+  FPSstar: {fileID: 0}
+  HOCstar: {fileID: 0}
+  FME1star: {fileID: 0}
+  FME2star: {fileID: 0}
+  TOTstar: {fileID: 0}
+  WFEStarParent: {fileID: 0}
+  WURDStarParent: {fileID: 0}
+  FPSStarParent: {fileID: 0}
+  HOCStarParent: {fileID: 0}
+  FME1StarParent: {fileID: 0}
+  FME2StarParent: {fileID: 0}
+  WFEStarText: {fileID: 0}
+  WURDStarText: {fileID: 0}
+  FPSStarText: {fileID: 0}
+  HOCStarText: {fileID: 0}
+  FME1StarText: {fileID: 0}
+  FME2StarText: {fileID: 0}
+  compWFEStarText: {fileID: 0}
+  compWURDStarText: {fileID: 0}
+  compFPSStarText: {fileID: 0}
+  compHOCStarText: {fileID: 0}
+  compFME1StarText: {fileID: 0}
+  compFME2StarText: {fileID: 0}
+  compTOTStarText: {fileID: 0}
+  TOTStarText: {fileID: 0}
+  mechimages: []
+  mechanismList: {fileID: 0}
+  WFE: {fileID: 0}
+  WURD: {fileID: 0}
+  FPS: {fileID: 0}
+  HOC: {fileID: 0}
+  FME1: {fileID: 0}
+  FME2: {fileID: 0}
+  starEmpty: {r: 0, g: 0, b: 0, a: 1}
+  starFilled: {r: 1, g: 0.84, b: 0, a: 1}
 --- !u!1 &1935446330
 GameObject:
   m_ObjectHideFlags: 0
