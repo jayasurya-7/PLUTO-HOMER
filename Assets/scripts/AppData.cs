@@ -20,11 +20,14 @@ public partial class AppData
     /*
      * CONSTANT FIXED VARIABLES.
      */
+    // App version
+    public static readonly string AppVersion = "HB-SW-1.0";
+
     // COM Port for the device
-    public static string COMPort = DataManager.getLapConfig();// D1- COM6 ,D2 - COM4, D5 - COM5, D7 - COM4, D8 - COM5, D9 - COM5 
+    public static string COMPort = DataManager.getLapConfig();// D1- COM6 ,D2 - COM4, D5 - COM5, D7 - COM4, D8 - COM5, D9 - COM5
 
     public string annotation{ get; set;}="";
-    public static bool isNRSVersion = true;
+    public static bool isNRSVersion = false;
     public static bool isPlanSetup = false;
 
     // What is this used for?

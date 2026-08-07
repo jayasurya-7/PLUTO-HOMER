@@ -109,7 +109,7 @@ public class OneTimeConfig : MonoBehaviour
 
         // Automatically set startDateField and endDateField
         startDate = DateTime.Now;
-        endDate = startDate.AddDays(28).Date.AddDays(1).AddSeconds(-1);
+        endDate = startDate.AddDays(28).AddSeconds(-1);
 
         if (File.Exists(DataManager.configFile))
         {

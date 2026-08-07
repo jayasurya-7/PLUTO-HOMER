@@ -121,7 +121,21 @@ public class BirdControl : MonoBehaviour
             }
         }
     }
-    public float AngleToScreen(float angle) =>  (-3f + (angle - aprom[0]) * (PLAYSIZE) / (aprom[1] - aprom[0]));
+    public float AngleToScreen(float angle)
+    {
+        float mappedAngle = angle;
+
+        // Reverse control for left training side on WFE, WURD, FPS mechanisms
+        if (AppData.Instance.trainingSide == "LEFT" &&
+            (AppData.Instance.selectedMechanism.IsMechanism("WFE") ||
+             AppData.Instance.selectedMechanism.IsMechanism("WURD") ||
+             AppData.Instance.selectedMechanism.IsMechanism("FPS")))
+        {
+            mappedAngle = aprom[1] - (angle - aprom[0]);
+        }
+
+        return -3f + (mappedAngle - aprom[0]) * (PLAYSIZE) / (aprom[1] - aprom[0]);
+    }
 
 
 

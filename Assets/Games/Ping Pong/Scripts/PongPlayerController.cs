@@ -36,7 +36,21 @@ public class PongPlayerController : MonoBehaviour
     }
 
 
-    public float AngleToScreen(float angle) => Mathf.Clamp(-playSize + (angle - aprom[0]) * (2 * playSize) / (aprom[1] - aprom[0]), bottomBound, topBound);
+    public float AngleToScreen(float angle)
+    {
+        float mappedAngle = angle;
+
+        // Reverse control for left training side on WFE, WURD, FPS mechanisms
+        if (AppData.Instance.trainingSide == "LEFT" &&
+            (AppData.Instance.selectedMechanism.IsMechanism("WFE") ||
+             AppData.Instance.selectedMechanism.IsMechanism("WURD") ||
+             AppData.Instance.selectedMechanism.IsMechanism("FPS")))
+        {
+            mappedAngle = aprom[1] - (angle - aprom[0]);
+        }
+
+        return Mathf.Clamp(-playSize + (mappedAngle - aprom[0]) * (2 * playSize) / (aprom[1] - aprom[0]), bottomBound, topBound);
+    }
 
 
     private void OnCollisionEnter2D(Collision2D collision)

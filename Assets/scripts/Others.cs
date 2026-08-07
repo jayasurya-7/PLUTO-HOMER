@@ -256,7 +256,7 @@ public class MechanismSpeed
 
             Debug.Log($"Dates between last update and today: {sessionDatesBetween.Count}");
 
-            if ((DateTime.Today - lastUpdate.Value).Days >= 3 && sessionDatesBetween.Count >= 2)
+            if ((DateTime.Today - lastUpdate.Value).Days >= 2 && sessionDatesBetween.Count >= 2)
             {
                 if (gameSpeed < PlutoAANController.MAX_SPEED) UpdateGameSpeed();
                 else

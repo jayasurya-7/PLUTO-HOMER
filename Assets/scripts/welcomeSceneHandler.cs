@@ -13,6 +13,7 @@ public class welcomSceneHandler : MonoBehaviour
     //public GameObject loading;
     public TextMeshProUGUI userName;
     public TextMeshProUGUI timeRemainingToday;
+    public TextMeshProUGUI appVersion;
     public TextMeshProUGUI todaysDay;
     public TextMeshProUGUI todaysDate;
     public int daysPassed;
@@ -68,7 +69,7 @@ public class welcomSceneHandler : MonoBehaviour
         // AppData.Instance.userData.ReadFile();
         Debug.Log($"status : {DataManager.status}");
 
-        
+        appVersion.text = $"Version: {AppData.AppVersion}";
         // Update summary display
         if (!piChartUpdated)
         {
