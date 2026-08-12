@@ -8,7 +8,9 @@ public class ToggleGameObject : MonoBehaviour
     public GameObject onImage;
     public GameObject offImage;
 
-    public bool trajON =true;
+    public bool trajON = true;
+
+    public string settingName = "trajectory"; // "trajectory", "easyMode", etc.
 
     private void Start()
     {
@@ -25,5 +27,21 @@ public class ToggleGameObject : MonoBehaviour
 
         if (onImage != null) onImage.SetActive(isOn);
         if (offImage != null) offImage.SetActive(!isOn);
+
+        // Save to AppData
+        SaveSetting(isOn);
+    }
+
+    private void SaveSetting(bool value)
+    {
+        if (settingName == "easyMode")
+        {
+            AppData.Instance.PongEasyMode = value;
+            AppLogger.LogInfo($"✓ Pong Easy Mode saved: {value}");
+        }
+        else if (settingName == "trajectory")
+        {
+            // Add other settings as needed
+        }
     }
 }

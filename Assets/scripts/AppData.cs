@@ -49,6 +49,11 @@ public partial class AppData
     public PlutoGame selectedGame;
 
     /*
+     * GAME SETTINGS
+     */
+    public bool PongEasyMode { get; set; } = false;
+
+    /*
      * SESSION DETAILS
      */
     public int currentSessionNumber { get; set; }

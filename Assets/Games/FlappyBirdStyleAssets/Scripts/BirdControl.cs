@@ -125,11 +125,13 @@ public class BirdControl : MonoBehaviour
     {
         float mappedAngle = angle;
 
-        // Reverse control for left training side on WFE, WURD, FPS mechanisms
+        // Reverse control for left training side on WFE, WURD, FPS, FME1, FME2 mechanisms
         if (AppData.Instance.trainingSide == "LEFT" &&
             (AppData.Instance.selectedMechanism.IsMechanism("WFE") ||
              AppData.Instance.selectedMechanism.IsMechanism("WURD") ||
-             AppData.Instance.selectedMechanism.IsMechanism("FPS")))
+             AppData.Instance.selectedMechanism.IsMechanism("FPS") ||
+             AppData.Instance.selectedMechanism.IsMechanism("FME1") ||
+             AppData.Instance.selectedMechanism.IsMechanism("FME2")))
         {
             mappedAngle = aprom[1] - (angle - aprom[0]);
         }

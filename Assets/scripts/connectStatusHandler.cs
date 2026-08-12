@@ -220,9 +220,10 @@ public class connectStatusHandler : MonoBehaviour
 
     BatteryStatus status;
     float level;
-    
+
     private float disconnectTimer = 0f;
     private const float shutdownDelay = 5f;
+    private const float shutdownDelayMainScene = 15f;
     private bool isShuttingDown = false;
     private bool isTransitioning = false;
 
@@ -276,7 +277,13 @@ public class connectStatusHandler : MonoBehaviour
         {
             connectStatus.color = Color.green;
             loading.SetActive(false);
-            statusText.text = $"{PlutoComm.version}\n[{PlutoComm.frameRate:F1}Hz]";
+
+            // Display firmware if available, otherwise just show frame rate
+            string statusDisplay = string.IsNullOrEmpty(PlutoComm.version)
+                ? $"[{PlutoComm.frameRate:F1}Hz]"
+                : $"{PlutoComm.version}\n[{PlutoComm.frameRate:F1}Hz]";
+
+            statusText.text = statusDisplay;
             disconnectTimer = 0f;
         }
         else
@@ -286,10 +293,13 @@ public class connectStatusHandler : MonoBehaviour
             statusText.text = "Not connected";
             disconnectTimer += Time.deltaTime;
 
-            if (disconnectTimer >= shutdownDelay)
+            string currentScene = SceneManager.GetActiveScene().name;
+            float currentShutdownDelay = (currentScene == "MAIN") ? shutdownDelayMainScene : shutdownDelay;
+
+            if (disconnectTimer >= currentShutdownDelay)
             {
-                string currentScene = SceneManager.GetActiveScene().name;
                 AppLogger.LogInfo($"[DISCONNECT] Current scene: '{currentScene}'");
+                AppLogger.LogInfo($"[DISCONNECT] Shutdown delay expired: {currentShutdownDelay}s");
                 AppLogger.LogInfo($"[DISCONNECT] AppData.isNRSVersion: {AppData.isNRSVersion}");
 
                 if (currentScene == "MAIN")
