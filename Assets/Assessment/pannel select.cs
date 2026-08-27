@@ -42,6 +42,7 @@ public class assessmentSceneHandler : MonoBehaviour
         mechName.text = PlutoComm.MECHANISMSTEXT[PlutoComm.GetPlutoCodeFromLabel(PlutoComm.MECHANISMS, AppData.Instance.selectedMechanism.name)];
 
         if (AppData.Instance.selectedMechanism.currRom == null) exitButton.SetActive(false);
+        if (AppData.isPlanSetup) exitButton.SetActive(false);
     }
 
     void Update()

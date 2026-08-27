@@ -15,6 +15,7 @@ public class MechanismDurationHandler : MonoBehaviour
         public string mechName;
         public Slider slider;
         public TMP_Text valueText;
+        public TMP_InputField inputField;
         public GameObject root;
         public Image fillImage;
     }
@@ -48,6 +49,7 @@ public class MechanismDurationHandler : MonoBehaviour
     private HashSet<string> assessedMechs = new HashSet<string>();
     private HashSet<string> selectedMechs = new HashSet<string>();
     private bool isUpdating = false;
+    private bool isUpdatingFromSlider = false; // Prevent circular updates
     private string lastChangedMech = ""; // Track which slider was last changed by user
 
     void Start()
@@ -353,9 +355,43 @@ public class MechanismDurationHandler : MonoBehaviour
                 mech.slider.onValueChanged.AddListener((v) =>
                 {
                     lastChangedMech = mechName; // Track which slider was changed
+                    SyncInputFieldFromSlider(mech);
                     UpdateUI();
                 });
             }
+
+            // Setup input field listeners
+            if (mech.inputField != null)
+            {
+                // Ensure whole numbers only
+                mech.inputField.contentType = TMP_InputField.ContentType.IntegerNumber;
+                mech.inputField.text = currentValue.ToString();
+
+                string mechName = mech.mechName;
+                mech.inputField.onValueChanged.AddListener((text) =>
+                {
+                    if (isUpdatingFromSlider) return; // Prevent circular update
+                    if (string.IsNullOrEmpty(text))
+                        return;
+
+                    if (int.TryParse(text, out int value))
+                    {
+                        // Clamp value to valid range
+                        value = Mathf.Clamp(value, isSelected ? MIN_DURATION : 0, MAX_PER_MECH);
+                        mech.slider.value = value;
+                    }
+                });
+            }
+        }
+    }
+
+    void SyncInputFieldFromSlider(MechSlider mech)
+    {
+        if (mech.inputField != null)
+        {
+            isUpdatingFromSlider = true;
+            mech.inputField.text = ((int)mech.slider.value).ToString();
+            isUpdatingFromSlider = false;
         }
     }
 
@@ -395,6 +431,10 @@ public class MechanismDurationHandler : MonoBehaviour
             // Update text for all sliders
             if (mech.valueText != null)
                 mech.valueText.text = value.ToString();
+
+            // Sync input field
+            if (mech.inputField != null)
+                mech.inputField.text = value.ToString();
 
             // Color coding: selected = #DA4469 pink, non-selected = dark gray
             if (mech.fillImage != null)

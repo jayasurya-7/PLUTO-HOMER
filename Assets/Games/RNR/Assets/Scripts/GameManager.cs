@@ -1019,36 +1019,38 @@ public class GameManager : MonoBehaviour
 
     public void HighlightRandomSeed()
     {
-        // clear old highlights
+        // Clear old highlights
         foreach (var seed in seeds)
         {
             seed.SetHighlight(false);
             seed.highLighter.SetActive(false);
         }
 
-        float r = (aprom[1] - aprom[0]) / 5f;
-        if (AppData.Instance.selectedMechanism.IsMechanism("HOC")) r = -r;
-        Debug.Log($" aprom min :{aprom[0]}and max is {aprom[1]} and the r is {r} and the tarPOs {targetAngle}");
-        // Map angle to bin (0..4)
-        int bin = Mathf.FloorToInt((targetAngle + aprom[1]) / r); // (-90→0, 90→4)
-        Debug.Log($" Bin Num: {bin}");
-        bin = Mathf.Clamp(bin, 0, 4); // safety
+        // Calculate bin width: divide AROM into 5 equal ranges
+        float romSpan = aprom[1] - aprom[0];
+        float binWidth = romSpan / seeds.Count;
 
-        // pick the corresponding seed
-        if (bin < seeds.Count)
+        // Map target angle to bin (0-4)
+        // Example: AROM [-30, 30] → binWidth = 12
+        // -30 to -18 = bin 0, -18 to -6 = bin 1, -6 to 6 = bin 2, 6 to 18 = bin 3, 18 to 30 = bin 4
+        float offsetAngle = targetAngle - aprom[0];  // Convert to 0-based
+        int bin = Mathf.FloorToInt(offsetAngle / binWidth);
+        bin = Mathf.Clamp(bin, 0, seeds.Count - 1);
+
+        Debug.Log($"AROM: [{aprom[0]}, {aprom[1]}] | BinWidth: {binWidth:F1} | Target: {targetAngle:F1} | Bin: {bin}");
+
+        // Highlight the seed
+        if (bin >= 0 && bin < seeds.Count)
         {
             currentHighlighted = seeds[bin];
-        
-        currentHighlighted.SetHighlight(true);
+            currentHighlighted.SetHighlight(true);
             nTargets++;
             lastHighlighted = currentHighlighted;
-            // Convert its X position back to angle
-            // float seedX = currentHighlighted.transform.position.x;
             convertedAngle = GetHighlightedSeedAngle();
         }
         else
         {
-            Debug.LogWarning($"No seed found for bin {bin}");
+            Debug.LogWarning($"Invalid bin {bin}");
         }
     }
 

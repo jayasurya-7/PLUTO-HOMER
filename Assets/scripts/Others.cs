@@ -704,12 +704,6 @@ public class PlutoUserData
 
     public DaySummary[] CalculateMoveTimePerDay(int noOfPastDays = 7)
     {
-        // Check if the session file has been loaded and has rows
-        if (dTableSession == null || dTableSession.Rows.Count == 0)
-        {
-            AppLogger.LogWarning("Session data is not available or the file is empty.");
-            return new DaySummary[0];
-        }
         DateTime today = DateTime.Now.Date;
         DaySummary[] daySummaries = new DaySummary[noOfPastDays];
 
@@ -719,9 +713,13 @@ public class PlutoUserData
             DateTime _day = today.AddDays(-i);
 
             // Calculate the total move time for the given day. If no data is found, _moveTime will be zero.
-            int _moveTime = dTableSession.AsEnumerable()
-                .Where(row => DateTime.ParseExact(row.Field<string>("DateTime"), DataManager.DATEFORMAT, CultureInfo.InvariantCulture).Date == _day)
-                .Sum(row => 60);
+            int _moveTime = 0;
+            if (dTableSession != null && dTableSession.Rows.Count > 0)
+            {
+                _moveTime = dTableSession.AsEnumerable()
+                    .Where(row => DateTime.ParseExact(row.Field<string>("DateTime"), DataManager.DATEFORMAT, CultureInfo.InvariantCulture).Date == _day)
+                    .Sum(row => 60);
+            }
 
             daySummaries[i - 1] = new DaySummary
             {

@@ -107,10 +107,7 @@ public class OneTimeConfig : MonoBehaviour
             SetFieldInteractivity(false);
         }
 
-        // Automatically set startDateField and endDateField
-        startDate = DateTime.Now;
-        endDate = startDate.AddDays(28).AddSeconds(-1);
-
+        // Load existing config
         if (File.Exists(DataManager.configFile))
         {
             LoadExistingConfig();
@@ -131,7 +128,8 @@ public class OneTimeConfig : MonoBehaviour
                 verifyPanel.SetActive(true);
             }
         }
-        
+
+        // Always display dates (dummy or loaded)
         startDateField.text = startDate.ToString("dd-MM-yyyy HH:mm:ss");
         endDateField.text = endDate.ToString("dd-MM-yyyy HH:mm:ss");
 

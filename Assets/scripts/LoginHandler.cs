@@ -11,7 +11,7 @@ public class LoginHandler : MonoBehaviour
 {
     public TMP_Dropdown userDropdown;
     public TMP_InputField[] configInputs; // Assign in inspector
-    public Button saveButton, createButton, editButton;
+    public Button  createButton, editButton;
     private string configFileName = "configdata.csv";
     private bool isEditing = false;
 
@@ -33,7 +33,7 @@ public class LoginHandler : MonoBehaviour
             }
             LoadUserFolders();
             userDropdown.onValueChanged.AddListener(OnUserSelected);
-            saveButton.onClick.AddListener(SaveIfChanged);
+           // saveButton.onClick.AddListener(SaveIfChanged);
             createButton.onClick.AddListener(createConfig);
             editButton.onClick.AddListener(EnableEditing);
 

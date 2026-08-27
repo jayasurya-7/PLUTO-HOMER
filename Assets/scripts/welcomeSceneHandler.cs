@@ -37,7 +37,7 @@ public class welcomSceneHandler : MonoBehaviour
     public Image loadingCircleImage;
     private float reconnectTimer = 0f;
     private float reconnectAttemptTimer = 0f;
-    private const float RECONNECT_TIMEOUT = 20f;
+    private const float RECONNECT_TIMEOUT = 15f;
     private const float RECONNECT_ATTEMPT_INTERVAL = 4f;
     private bool isInitialized = false;
     private int lastDisplayedTime = -1;
@@ -184,20 +184,34 @@ public class welcomSceneHandler : MonoBehaviour
 
     private void UpdatePieChart()
     {
-        if (daySummaries == null || AppData.Instance.userData == null)
+        if (daySummaries == null)
         {
-            AppLogger.LogError("Cannot update pie chart - data is null");
+            AppLogger.LogError("daySummaries is NULL!");
             return;
         }
 
         int N = daySummaries.Length;
+        AppLogger.LogInfo($"UpdatePieChart: {N} days to display");
+
         for (int i = 0; i < N; i++)
         {
             Debug.Log($"{i} | {daySummaries[i].Day} | {daySummaries[i].Date} | {daySummaries[i].MoveTime}");
-            prevDays[i].text = daySummaries[i].Day;
-            prevDates[i].text = daySummaries[i].Date;
-            pies[i].fillAmount = daySummaries[i].MoveTime / AppData.Instance.userData.totalMoveTimePrsc;
-            pies[i].color = new Color32(148,234,107,255);
+
+            if (prevDays[i] == null)
+                AppLogger.LogError($"prevDays[{i}] is NULL - NOT ASSIGNED IN INSPECTOR!");
+            else
+                prevDays[i].text = daySummaries[i].Day;
+
+            if (prevDates[i] == null)
+                AppLogger.LogError($"prevDates[{i}] is NULL - NOT ASSIGNED IN INSPECTOR!");
+            else
+                prevDates[i].text = daySummaries[i].Date;
+
+            if (pies[i] != null)
+            {
+                pies[i].fillAmount = daySummaries[i].MoveTime / AppData.Instance.userData.totalMoveTimePrsc;
+                pies[i].color = new Color32(148,234,107,255);
+            }
         }
         piChartUpdated = true;
     }
